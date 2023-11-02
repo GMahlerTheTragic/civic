@@ -1,13 +1,16 @@
 import torch
-from torch.utils.data import DataLoader
-from transformers import AdamW, LongformerTokenizer, LongformerForSequenceClassification
+import wandb
+from torch.optim import AdamW
 
+from torch.utils.data import DataLoader
+from torcheval.metrics.functional import multiclass_f1_score
+from transformers import LongformerTokenizer, LongformerForSequenceClassification
 from civic.datasets.CivicEvidenceDataSet import CivicEvidenceDataSet
 
 
 class Longformer:
     @staticmethod
-    def create():
+    def from_longformer_allenai_base_pretrained():
         model_name = "allenai/longformer-base-4096"
         tokenizer = LongformerTokenizer.from_pretrained(model_name)
         model = LongformerForSequenceClassification.from_pretrained(
@@ -15,15 +18,19 @@ class Longformer:
         )
         return tokenizer, model
 
+    @staticmethod
+    def from_roberta_snapshot():
+        raise NotImplementedError
+
 
 def train():
-    tokenizer, model = Longformer.create()
+    tokenizer, model = Longformer.from_longformer_allenai_base_pretrained()
     device = torch.device("cpu")
     print(f"Using device: {device}")
     model.to(device)
 
-    train_dataset = CivicEvidenceDataSet.full_train_dataset(tokenizer)
-    test_dataset = CivicEvidenceDataSet.full_test_dataset(tokenizer)
+    train_dataset = CivicEvidenceDataSet.full_train_dataset(tokenizer, 4096)
+    test_dataset = CivicEvidenceDataSet.full_test_dataset(tokenizer, 4096)
 
     # Define data loaders for batching and shuffling
     batch_size = 2
@@ -36,6 +43,18 @@ def train():
 
     # Define the optimizer and loss function
     optimizer = AdamW(model.parameters(), lr=learning_rate)
+
+    run = wandb.init(
+        project="civic",
+        config={
+            "learning_rate": learning_rate,
+            "architecture": "Longformer",
+            "dataset": "CivicEvidenceDataSetFull",
+            "epochs": num_epochs,
+            "batch_size": batch_size,
+            "distributed": False,
+        },
+    )
 
     # Training loop
     for epoch in range(num_epochs):
@@ -66,6 +85,8 @@ def train():
         val_loss = 0.0
         num_correct = 0
         num_samples = 0
+        all_predictions = torch.tensor([])
+        all_real_labels = torch.tensor([])
 
         with torch.no_grad():
             idx = 0
@@ -79,20 +100,50 @@ def train():
                 outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
                 loss = outputs.loss
                 logits = outputs.logits
-
                 val_loss += loss.item()
-                predicted_labels = torch.argmax(logits)
-                num_correct += (predicted_labels == labels).sum().item()
+                predicted_labels = torch.argmax(logits, dim=1)
+                print(predicted_labels)
+                num_correct += torch.eq(predicted_labels, labels).sum().item()
                 num_samples += labels.size(0)
+                all_predictions = torch.concat([all_predictions, predicted_labels])
+                all_real_labels = torch.concat([all_real_labels, labels])
                 idx += 1
-
+        print(all_predictions)
         train_loss /= len(train_loader)
         val_loss /= len(test_loader)
+        print(num_correct)
+        print(num_samples)
         val_accuracy = num_correct / num_samples
+        micro_f1_score = multiclass_f1_score(
+            all_predictions, all_real_labels, num_classes=5
+        )
+
+        wandb.log(
+            {
+                "val_accuracy": val_accuracy,
+                "train_loss": train_loss,
+                "val_loss": val_loss,
+            }
+        )
+
+        torch.save(
+            {
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "loss": train_loss,
+            },
+            "Longformer/model.pth",
+        )
+        artifact = wandb.Artifact("model", type="model")
+        artifact.add_file("Longformer/model.pth")
+        run.log_artifact(artifact)
 
         print(
-            f"Epoch {epoch + 1}/{num_epochs}: Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Accuracy: {val_accuracy:.4f}"
+            f"\nEpoch {epoch + 1}/{num_epochs}: Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}"
+            f" | Val Accuracy: {val_accuracy:.4f} | Val MicroF1: {micro_f1_score:.4f}"
         )
+    wandb.finish()
 
 
 if __name__ == "__main__":

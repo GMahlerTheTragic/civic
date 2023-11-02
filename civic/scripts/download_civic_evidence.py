@@ -77,7 +77,7 @@ def _expand_column(json, name, replacements, is_list=False):
     if json[name] is not None:
         for k, v in replacements.items():
             if is_list:
-                json[v] = list(map(lambda x: x[k], json[name]))
+                json[v] = list(map(lambda x, y=k: x[y], json[name]))
             else:
                 json[v] = json[name][k]
     json.pop(name)
@@ -107,6 +107,6 @@ if __name__ == "__main__":
     print(
         f"Retrieved {df.id.nunique()} unique evidence items. Database indicates {total_count_per_database}"
     )
-    print(f"Saving as CSV file")
+    print("Saving as CSV file")
     df.to_csv(os.path.join(PROJECT_ROOT, "data/01_raw/civic_evidence.csv"))
-    print(f"Success!")
+    print("Success!")
