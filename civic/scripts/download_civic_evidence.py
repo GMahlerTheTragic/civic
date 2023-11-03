@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append("../../../civic")
+
 import os
 
 import pandas as pd

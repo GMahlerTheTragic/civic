@@ -1,11 +1,4 @@
-import os
-import pandas as pd
-import numpy as np
-import torch
-
 from torch.utils.data import Dataset
-from civic.utils.filesystem_utils import check_file_exists
-from config import PROJECT_ROOT
 
 
 class CivicEvidenceDataSet(Dataset):

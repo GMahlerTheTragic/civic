@@ -1,3 +1,6 @@
+import sys
+
+sys.path.append("../../../civic")
 import os
 
 import numpy as np
@@ -6,6 +9,8 @@ from sklearn.model_selection import train_test_split
 
 from civic.utils.filesystem_utils import create_folder_if_not_exists
 from config import PROJECT_ROOT
+
+THE_CLASS_DISTRIBUTION_IS = "The class distribution is"
 
 
 def remove_duplicates(data, column_combination):
@@ -51,7 +56,7 @@ def do_data_cleaning(data):
         how="all",
     )
     print(
-        f"Dropping records that have none of diseaseName, signigicane, MP or therapy {data.shape[0]} records remaining"
+        f"Dropping records that have none of diseaseName, significance, MP or therapy {data.shape[0]} records remaining"
     )
     print("Fill NaN with Unknown")
     data = data.fillna("Unknown")
@@ -101,7 +106,7 @@ if __name__ == "__main__":
     df = do_data_cleaning(df)
 
     print(f"Processed data set has {df.shape[0]} records")
-    print("The class distribution is")
+    print(THE_CLASS_DISTRIBUTION_IS)
     print(df.evidenceLevel.value_counts(normalize=True))
 
     print("Creating stratified train-test split based on the full data")
@@ -109,10 +114,10 @@ if __name__ == "__main__":
         df, 0.2, "evidenceLevel"
     )
     print(f"The full training set has {train_data_full.shape[0]} records")
-    print("The class distribution is")
+    print(THE_CLASS_DISTRIBUTION_IS)
     print(train_data_full.evidenceLevel.value_counts(normalize=True))
     print(f"The full test set has {test_data_full.shape[0]} records")
-    print("The class distribution is")
+    print(THE_CLASS_DISTRIBUTION_IS)
     print(test_data_full.evidenceLevel.value_counts(normalize=True))
 
     print("Creating stratified train-test split based on accepted records only")
@@ -122,10 +127,10 @@ if __name__ == "__main__":
     print(
         f"The accepted only training set has {train_data_accepted_only.shape[0]} records"
     )
-    print("The class distribution is")
+    print(THE_CLASS_DISTRIBUTION_IS)
     print(train_data_accepted_only.evidenceLevel.value_counts(normalize=True))
     print(f"The accepted only test set has {test_data_accepted_only.shape[0]} records")
-    print("The class distribution is")
+    print(THE_CLASS_DISTRIBUTION_IS)
     print(test_data_accepted_only.evidenceLevel.value_counts(normalize=True))
 
     print("Success: Writing to CSV")
