@@ -1,4 +1,11 @@
-from transformers import LongformerTokenizer, LongformerForSequenceClassification
+from transformers import (
+    LongformerTokenizer,
+    LongformerForSequenceClassification,
+    BertTokenizer,
+    LongformerForMaskedLM,
+    BertForMaskedLM,
+    LongformerConfig,
+)
 
 
 class Longformer:
@@ -10,7 +17,3 @@ class Longformer:
             model_name, num_labels=5
         )
         return tokenizer, model
-
-    @staticmethod
-    def from_roberta_snapshot():
-        raise NotImplementedError

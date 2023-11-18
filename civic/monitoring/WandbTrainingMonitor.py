@@ -1,38 +1,52 @@
 from civic.monitoring.ITrainingMonitor import ITrainingMonitor
 import wandb
 import torch
+import os
 
+from civic.utils.AcceleratorSingleton import AcceleratorSingleton
 from civic.utils.filesystem_utils import create_folder_if_not_exists
 
 
 class WandbTrainingMonitor(ITrainingMonitor):
+    accelerator = AcceleratorSingleton()
+
     def __init__(self, config):
-        self.run = wandb.init(project="civic", config=config)
+        self.accelerator.accelerator.init_trackers(
+            project_name="civic",
+            config=config,
+        )
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        wandb.finish()
+        self.accelerator.accelerator.end_training()
 
-    def save_model_checkpoint(self, epoch, model, optimizer, training_loss):
+    def save_model_checkpoint(
+        self,
+        epoch,
+        model,
+        optimizer,
+        training_loss,
+    ):
         create_folder_if_not_exists("model_checkpoints")
+        self.accelerator.wait_for_everyone()
+        run_id = self.accelerator.accelerator.get_tracker("wandb").run.id
         torch.save(
             {
                 "epoch": epoch,
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
+                "model_state_dict": self.accelerator.unwrap_model(model).state_dict(),
+                "optimizer_state_dict": self.accelerator.unwrap_model(
+                    optimizer
+                ).state_dict(),
                 "loss": training_loss,
             },
-            f"model_checkpoints/longformer_finetuned_{self.run.id}",
+            f"model_checkpoints/{run_id}",
         )
-        artifact = wandb.Artifact("LongformerFineTuned", type="model")
-        artifact.add_file(f"model_checkpoints/longformer_finetuned_{self.run.id}")
-        self.run.log_artifact(artifact)
 
     def log_training_metrics(self, epoch, total_epochs, metrics):
-        wandb.log({"Epoch": epoch, **metrics})
+        self.accelerator.log({"Epoch": epoch, **metrics})
         log_string = f"\nEpoch {epoch + 1}/{total_epochs}: "
         for metric, value in metrics.items():
             log_string += f"{metric}: {value:.4f} | "
-        print(log_string)
+        self.accelerator.print(log_string)

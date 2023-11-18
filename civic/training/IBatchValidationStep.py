@@ -1,7 +1,7 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 
-class IBatchValidationStep:
+class IBatchValidationStep(ABC):
     @abstractmethod
     def validate_batch(self, batch, model):
         raise NotImplementedError

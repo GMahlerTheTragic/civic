@@ -1,7 +1,7 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 
-class ITrainingMonitor:
+class ITrainingMonitor(ABC):
     @abstractmethod
     def __enter__(self):
         raise NotImplementedError

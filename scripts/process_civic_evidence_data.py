@@ -1,14 +1,14 @@
 import sys
-
-sys.path.append("../../../civic")
-import os
-
 import numpy as np
 import pandas as pd
+import os
 from sklearn.model_selection import train_test_split
 
 from civic.utils.filesystem_utils import create_folder_if_not_exists
 from config import PROJECT_ROOT
+
+sys.path.append("..")
+
 
 THE_CLASS_DISTRIBUTION_IS = "The class distribution is"
 

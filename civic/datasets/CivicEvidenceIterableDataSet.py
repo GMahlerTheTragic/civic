@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import torch
 
-from torch.utils.data import Dataset
+from torch.utils.data import IterableDataset
 from civic.utils.filesystem_utils import check_file_exists
 from config import PROJECT_ROOT
 
@@ -13,14 +13,16 @@ FILE_NOT_FOUND_ERROR_MESSAGE = "Please first run the script process_civic_eviden
 EVIDENCE_LEVEL_TO_NUMBER = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4}
 
 
-class CivicEvidenceDataSet(Dataset):
+class CivicEvidenceIterableDataSet(IterableDataset):
     @staticmethod
     def full_train_dataset(tokenizer, tokenizer_max_length):
         path_to_file = os.path.join(
             PROJECT_ROOT, "data/02_processed/civic_evidence_train.csv"
         )
         if check_file_exists(path_to_file):
-            return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
+            return CivicEvidenceIterableDataSet(
+                path_to_file, tokenizer, tokenizer_max_length
+            )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
@@ -29,7 +31,9 @@ class CivicEvidenceDataSet(Dataset):
             PROJECT_ROOT, "data/02_processed/civic_evidence_test.csv"
         )
         if check_file_exists(path_to_file):
-            return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
+            return CivicEvidenceIterableDataSet(
+                path_to_file, tokenizer, tokenizer_max_length
+            )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
@@ -38,7 +42,9 @@ class CivicEvidenceDataSet(Dataset):
             PROJECT_ROOT, "data/02_processed/civic_evidence_train_accepted_only.csv"
         )
         if check_file_exists(path_to_file):
-            return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
+            return CivicEvidenceIterableDataSet(
+                path_to_file, tokenizer, tokenizer_max_length
+            )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
@@ -47,7 +53,9 @@ class CivicEvidenceDataSet(Dataset):
             PROJECT_ROOT, "data/02_processed/civic_evidence_test_accepted_only.csv"
         )
         if check_file_exists(path_to_file):
-            return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
+            return CivicEvidenceIterableDataSet(
+                path_to_file, tokenizer, tokenizer_max_length
+            )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
@@ -62,11 +70,21 @@ class CivicEvidenceDataSet(Dataset):
         self.prepend_string = df["prependString"]
         self.tokenizer = tokenizer
         self.tokenizer_max_length = tokenizer_max_length
+        self.current = 0
+        self.end = len(self.labels)
 
-    def __len__(self):
-        return len(self.labels)
+    def __iter__(self):
+        return self
 
-    def __getitem__(self, idx):
+    def __next__(self):
+        if self.current < self.end:
+            result = self._extract_id(self.current)
+            self.current += 1
+            return result
+        else:
+            raise StopIteration
+
+    def _extract_id(self, idx):
         abstract = str(self.abstracts[idx])
         prepend_string = str(self.prepend_string[idx])
         input_string = "Metadata:\n" + prepend_string + "\n" + "Abstract:\n" + abstract

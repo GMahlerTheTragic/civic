@@ -1,14 +1,12 @@
 import sys
-
-sys.path.append("../../../civic")
-
 import os
-
 import pandas as pd
 import requests
 
 from civic.utils.filesystem_utils import create_folder_if_not_exists
 from config import PROJECT_ROOT
+
+sys.path.append("..")
 
 CIVIC_GRAPH_QL_ENDPOINT = "https://civicdb.org/api/graphql"
 

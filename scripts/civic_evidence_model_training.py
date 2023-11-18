@@ -1,8 +1,13 @@
 import sys
-
-sys.path.append("../../../civic")
-
 import argparse
+
+import torch
+
+sys.path.append("..")
+import torch.multiprocessing as mp
+from civic import Longformer
+from civic.models.bert_long.BertLongForMaskedLM import BertLongForMaskedLM
+
 
 from civic.training import IModelTrainer
 from civic.training.ModelTrainerFactory import ModelTrainerFactory
@@ -27,7 +32,9 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument(
-    "--instance", choices=["LongFormerBaseFineTuning"], help="What to train for"
+    "--instance",
+    choices=["LongFormerBaseFineTuning", "BioMedLMFineTuning", "BiomedBertPretraining"],
+    help="What to train for",
 )
 parser.add_argument("--epochs", type=positive_integer, help="How many epochs to train")
 parser.add_argument(
@@ -63,8 +70,24 @@ def main():
                 args.learningrate, args.batchsize
             )
         )
+    elif args.instance == "BioMedLMFineTuning":
+        model_trainer: IModelTrainer = (
+            ModelTrainerFactory.create_bio_med_lm_finetuning_model_trainer(
+                args.learningrate, args.batchsize
+            )
+        )
+    elif args.instance == "BiomedBertPretraining":
+        tokenizer, model = BertLongForMaskedLM.from_biobert_snapshot()
+    else:
+        print("Please provide a valid instance name.")
+        sys.exit(-1)
     model_trainer.do_model_training(args.epochs)
 
 
 if __name__ == "__main__":
-    main()
+    world_size = torch.cuda.device_count()
+    mp.spawn(
+        main,
+        args=(world_size,),
+        nprocs=world_size,
+    )

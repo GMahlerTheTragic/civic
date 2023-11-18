@@ -6,3 +6,5 @@ torch~=2.0.1
 transformers~=4.31.0
 torcheval~=0.0.7
 wandb~=0.15.12
+accelerate~=0.24.1
+openai~=1.1.1
