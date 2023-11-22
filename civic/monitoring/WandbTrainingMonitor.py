@@ -1,7 +1,8 @@
-from civic.monitoring.ITrainingMonitor import ITrainingMonitor
-import wandb
-import torch
 import os
+
+from civic.config import MODEL_CHECKPOINT_DIR
+from civic.monitoring.TrainingMonitor import ITrainingMonitor
+import torch
 
 from civic.utils.AcceleratorSingleton import AcceleratorSingleton
 from civic.utils.filesystem_utils import create_folder_if_not_exists
@@ -29,24 +30,25 @@ class WandbTrainingMonitor(ITrainingMonitor):
         optimizer,
         training_loss,
     ):
-        create_folder_if_not_exists("model_checkpoints")
         self.accelerator.wait_for_everyone()
-        run_id = self.accelerator.accelerator.get_tracker("wandb").run.id
-        torch.save(
-            {
-                "epoch": epoch,
-                "model_state_dict": self.accelerator.unwrap_model(model).state_dict(),
-                "optimizer_state_dict": self.accelerator.unwrap_model(
-                    optimizer
-                ).state_dict(),
-                "loss": training_loss,
-            },
-            f"model_checkpoints/{run_id}",
-        )
+        if self.accelerator.is_local_main_process():
+            create_folder_if_not_exists(MODEL_CHECKPOINT_DIR)
+            run_name = self.accelerator.accelerator.get_tracker("wandb").run.name
+            torch.save(
+                {
+                    "epoch": epoch,
+                    "model_state_dict": self.accelerator.accelerator.unwrap_model(
+                        model
+                    ).state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "loss": training_loss,
+                },
+                os.path.join(MODEL_CHECKPOINT_DIR, run_name),
+            )
 
     def log_training_metrics(self, epoch, total_epochs, metrics):
         self.accelerator.log({"Epoch": epoch, **metrics})
         log_string = f"\nEpoch {epoch + 1}/{total_epochs}: "
         for metric, value in metrics.items():
-            log_string += f"{metric}: {value:.4f} | "
+            log_string += f"{metric}: {value:.10f} | "
         self.accelerator.print(log_string)

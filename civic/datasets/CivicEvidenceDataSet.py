@@ -5,8 +5,7 @@ import torch
 
 from torch.utils.data import Dataset
 from civic.utils.filesystem_utils import check_file_exists
-from config import PROJECT_ROOT
-
+from civic.config import DATA_PROCESSED_DIR
 
 FILE_NOT_FOUND_ERROR_MESSAGE = "Please first run the script process_civic_evidence_data"
 
@@ -16,18 +15,14 @@ EVIDENCE_LEVEL_TO_NUMBER = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4}
 class CivicEvidenceDataSet(Dataset):
     @staticmethod
     def full_train_dataset(tokenizer, tokenizer_max_length):
-        path_to_file = os.path.join(
-            PROJECT_ROOT, "data/02_processed/civic_evidence_train.csv"
-        )
+        path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_train.csv")
         if check_file_exists(path_to_file):
             return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
     def full_test_dataset(tokenizer, tokenizer_max_length):
-        path_to_file = os.path.join(
-            PROJECT_ROOT, "data/02_processed/civic_evidence_test.csv"
-        )
+        path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test.csv")
         if check_file_exists(path_to_file):
             return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
@@ -35,7 +30,7 @@ class CivicEvidenceDataSet(Dataset):
     @staticmethod
     def accepted_only_train_dataset(tokenizer, tokenizer_max_length):
         path_to_file = os.path.join(
-            PROJECT_ROOT, "data/02_processed/civic_evidence_train_accepted_only.csv"
+            DATA_PROCESSED_DIR, "civic_evidence_train_accepted_only.csv"
         )
         if check_file_exists(path_to_file):
             return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
@@ -44,7 +39,7 @@ class CivicEvidenceDataSet(Dataset):
     @staticmethod
     def accepted_only_test_dataset(tokenizer, tokenizer_max_length):
         path_to_file = os.path.join(
-            PROJECT_ROOT, "data/02_processed/civic_evidence_test_accepted_only.csv"
+            DATA_PROCESSED_DIR, "civic_evidence_test_accepted_only.csv"
         )
         if check_file_exists(path_to_file):
             return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)

@@ -8,7 +8,7 @@ class AcceleratorSingleton:
         if cls._instance is None:
             cls._instance = super(AcceleratorSingleton, cls).__new__(cls)
             cls._instance._accelerator = Accelerator(
-                log_with="wandb"
+                log_with="wandb", mixed_precision="fp16", gradient_accumulation_steps=8
             )  # Private attribute
         return cls._instance
 
@@ -33,4 +33,4 @@ class AcceleratorSingleton:
         self._accelerator.wait_for_everyone()
 
     def is_local_main_process(self):
-        return self._accelerator.is_local_main_process()
+        return self._accelerator.is_local_main_process

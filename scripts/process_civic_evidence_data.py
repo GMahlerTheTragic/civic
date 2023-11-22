@@ -5,7 +5,7 @@ import os
 from sklearn.model_selection import train_test_split
 
 from civic.utils.filesystem_utils import create_folder_if_not_exists
-from config import PROJECT_ROOT
+from civic.config import DATA_PROCESSED_DIR, DATA_RAW_DIR
 
 sys.path.append("..")
 
@@ -98,9 +98,9 @@ def get_stratified_train_test_split(data, test_size, class_col):
 
 
 if __name__ == "__main__":
-    create_folder_if_not_exists(os.path.join(PROJECT_ROOT, "data/02_processed"))
+    create_folder_if_not_exists(os.path.join(DATA_PROCESSED_DIR, "data/02_processed"))
 
-    df = pd.read_csv(os.path.join(PROJECT_ROOT, "data/01_raw/civic_evidence.csv"))
+    df = pd.read_csv(os.path.join(DATA_RAW_DIR, "civic_evidence.csv"))
     print(f"Retrieved {df.shape[0]} records")
 
     df = do_data_cleaning(df)
@@ -134,19 +134,17 @@ if __name__ == "__main__":
     print(test_data_accepted_only.evidenceLevel.value_counts(normalize=True))
 
     print("Success: Writing to CSV")
-    train_data_full.to_csv(
-        os.path.join(PROJECT_ROOT, "data/02_processed/civic_evidence_train.csv")
-    )
-    test_data_full.to_csv(
-        os.path.join(PROJECT_ROOT, "data/02_processed/civic_evidence_test.csv")
-    )
+    train_data_full.to_csv(os.path.join(DATA_PROCESSED_DIR, "civic_evidence_train.csv"))
+    test_data_full.to_csv(os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test.csv"))
     train_data_accepted_only.to_csv(
         os.path.join(
-            PROJECT_ROOT, "data/02_processed/civic_evidence_train_accepted_only.csv"
+            DATA_PROCESSED_DIR,
+            "civic_evidence_train_accepted_only.csv",
         )
     )
     test_data_accepted_only.to_csv(
         os.path.join(
-            PROJECT_ROOT, "data/02_processed/civic_evidence_test_accepted_only.csv"
+            DATA_PROCESSED_DIR,
+            "civic_evidence_test_accepted_only.csv",
         )
     )

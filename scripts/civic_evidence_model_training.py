@@ -1,15 +1,17 @@
+import math
+
+from civic.config import MODEL_STORAGE_DIR
+from civic.models.roberta.RobertaLongModelArgs import RobertaLongModelArgs
+
+
+import os
 import sys
 import argparse
 
-import torch
-
-sys.path.append("..")
-import torch.multiprocessing as mp
-from civic import Longformer
-from civic.models.bert_long.BertLongForMaskedLM import BertLongForMaskedLM
+from transformers import HfArgumentParser, TrainingArguments
 
 
-from civic.training import IModelTrainer
+from civic.training import ModelTrainer
 from civic.training.ModelTrainerFactory import ModelTrainerFactory
 
 
@@ -27,19 +29,22 @@ def positive_float(value):
     return fvalue
 
 
-parser = argparse.ArgumentParser(
-    description="My Python script with command-line options."
-)
+parser = argparse.ArgumentParser(description="Civic Model Training")
 
 parser.add_argument(
     "--instance",
-    choices=["LongFormerBaseFineTuning", "BioMedLMFineTuning", "BiomedBertPretraining"],
+    choices=[
+        "Bert",
+        "PubmedBert",
+        "BiolinkBert",
+        "Roberta",
+        "BiomedRoberta",
+        "Longformer",
+        "BioMedLMFineTuning",
+    ],
     help="What to train for",
 )
 parser.add_argument("--epochs", type=positive_integer, help="How many epochs to train")
-parser.add_argument(
-    "--epochbatches", type=positive_integer, help="How many batches per epoch"
-)
 parser.add_argument(
     "--learningrate", type=positive_float, help="The learning rate for gradient descend"
 )
@@ -48,36 +53,107 @@ parser.add_argument(
     type=positive_integer,
     help="The batch size to use during training and validation",
 )
-parser.add_argument(
-    "--lossfunction",
-    choices=["MSE", "BCE"],
-    help="The loss function to compute gradients for",
-)
-parser.add_argument(
-    "--acceptedonly",
-    choices=["true", "false"],
-    help="If only to use accepted evidence items",
-)
 
 args = parser.parse_args()
 
 
 def main():
-    model_trainer: IModelTrainer = None
-    if args.instance == "LongFormerBaseFineTuning":
-        model_trainer: IModelTrainer = (
+    if args.instance == "Bert":
+        model_trainer: ModelTrainer = (
+            ModelTrainerFactory.create_bert_base_finetuning_model_trainer(
+                args.learningrate, args.batchsize
+            )
+        )
+    elif args.instance == "PubmedBert":
+        model_trainer: ModelTrainer = (
+            ModelTrainerFactory.create_pubmed_bert_finetuning_model_trainer(
+                args.learningrate, args.batchsize
+            )
+        )
+    elif args.instance == "BiolinkBert":
+        model_trainer: ModelTrainer = (
+            ModelTrainerFactory.create_bio_link_bert_finetuning_model_trainer(
+                args.learningrate, args.batchsize
+            )
+        )
+    elif args.instance == "Roberta":
+        model_trainer: ModelTrainer = (
+            ModelTrainerFactory.create_roberta_base_finetuning_model_trainer(
+                args.learningrate, args.batchsize
+            )
+        )
+    elif args.instance == "BiomedRoberta":
+        model_trainer: ModelTrainer = (
+            ModelTrainerFactory.create_biomed_roberta_base_finetuning_model_trainer(
+                args.learningrate, args.batchsize
+            )
+        )
+    elif args.instance == "Longformer":
+        model_trainer: ModelTrainer = (
             ModelTrainerFactory.create_longformer_base_finetuning_model_trainer(
                 args.learningrate, args.batchsize
             )
         )
     elif args.instance == "BioMedLMFineTuning":
-        model_trainer: IModelTrainer = (
-            ModelTrainerFactory.create_bio_med_lm_finetuning_model_trainer(
+        model_trainer: ModelTrainer = (
+            ModelTrainerFactory.create_biomed_lm_finetuning_model_trainer(
                 args.learningrate, args.batchsize
             )
         )
     elif args.instance == "BiomedBertPretraining":
-        tokenizer, model = BertLongForMaskedLM.from_biobert_snapshot()
+        hf_parser = HfArgumentParser(
+            (
+                TrainingArguments,
+                RobertaLongModelArgs,
+            )
+        )
+        training_args, model_args = hf_parser.parse_args_into_dataclasses(
+            look_for_args_file=False,
+            args=[
+                "--output_dir",
+                "tmp",
+                "--warmup_steps",
+                "500",
+                "--learning_rate",
+                "0.00003",
+                "--weight_decay",
+                "0.01",
+                "--adam_epsilon",
+                "1e-6",
+                "--max_steps",
+                "3000",
+                "--logging_steps",
+                "500",
+                "--save_steps",
+                "500",
+                "--max_grad_norm",
+                "5.0",
+                "--per_device_train_batch_size",
+                "8",
+                "--per_device_eval_batch_size",
+                "2",  # 32GB gpu with fp32
+                "--gradient_accumulation_steps",
+                "32",
+            ],
+        )
+        training_args.val_datapath = "data/02_processed/output_file.txt"
+        training_args.train_datapath = "data/02_processed/output_file.txt"
+        model_trainer = (
+            ModelTrainerFactory.create_biomed_roberta_long_pre_training_model_trainer(
+                training_args
+            )
+        )
+        model_path = os.path.join(MODEL_STORAGE_DIR, "biomed_roberta_base-1024")
+        print(f"Pretraining roberta-base-{model_args.max_pos} ... ")
+        training_args.max_steps = 3
+        eval_loss = model_trainer.evaluate()
+        eval_loss = eval_loss["eval_loss"]
+        print(f"Initial eval bpc: {eval_loss/math.log(2)}")
+        model_trainer.train(model_path)
+        model_trainer.save_model()
+        eval_loss = model_trainer.evaluate()
+        eval_loss = eval_loss["eval_loss"]
+        print(f"Eval bpc after pretraining: {eval_loss/math.log(2)}")
     else:
         print("Please provide a valid instance name.")
         sys.exit(-1)
@@ -85,9 +161,4 @@ def main():
 
 
 if __name__ == "__main__":
-    world_size = torch.cuda.device_count()
-    mp.spawn(
-        main,
-        args=(world_size,),
-        nprocs=world_size,
-    )
+    main()

@@ -1,7 +1,7 @@
 from transformers import LongformerSelfAttention
 
 
-class BertLongSelfAttention(LongformerSelfAttention):
+class RobertaLongSelfAttention(LongformerSelfAttention):
     def forward(
         self,
         hidden_states,
@@ -12,6 +12,7 @@ class BertLongSelfAttention(LongformerSelfAttention):
         is_global_attn=None,
         output_attentions=False,
     ):
+        print(attention_mask.size())
         return super().forward(
             hidden_states,
             attention_mask=attention_mask,

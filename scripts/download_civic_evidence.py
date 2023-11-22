@@ -4,7 +4,7 @@ import pandas as pd
 import requests
 
 from civic.utils.filesystem_utils import create_folder_if_not_exists
-from config import PROJECT_ROOT
+from civic.config import DATA_DIR, DATA_RAW_DIR
 
 sys.path.append("..")
 
@@ -86,7 +86,7 @@ def _expand_column(json, name, replacements, is_list=False):
 
 
 if __name__ == "__main__":
-    create_folder_if_not_exists(os.path.join(PROJECT_ROOT, "data/01_raw"))
+    create_folder_if_not_exists(DATA_RAW_DIR)
     items = []
     print(f"Starting download from {CIVIC_GRAPH_QL_ENDPOINT}")
     data = download_civic_evidence(50, '""')
@@ -110,5 +110,5 @@ if __name__ == "__main__":
         f"Retrieved {df.id.nunique()} unique evidence items. Database indicates {total_count_per_database}"
     )
     print("Saving as CSV file")
-    df.to_csv(os.path.join(PROJECT_ROOT, "data/01_raw/civic_evidence.csv"))
+    df.to_csv(os.path.join(DATA_DIR, "data/01_raw/civic_evidence.csv"))
     print("Success!")

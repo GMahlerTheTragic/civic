@@ -1,11 +1,9 @@
 from civic.metrics.MetricsContainer import MetricsContainer
-from civic.training.IBatchValidationStep import IBatchValidationStep
+from civic.training.BatchValidationStep import BatchValidationStep
 import torch
 
-from civic.utils.GpuDeviceHandler import GpuDeviceHandler
 
-
-class ClassifierFineTuningBatchValidationStep(IBatchValidationStep):
+class ClassifierFineTuningBatchValidationStep(BatchValidationStep):
     def __init__(self, device):
         self.device = device
 
@@ -29,13 +27,12 @@ class ClassifierFineTuningBatchValidationStep(IBatchValidationStep):
         return torch.eq(predicted_labels, labels).sum().item()
 
     def validate_batch(self, batch, model):
+        batch_size = batch["input_ids"].size(0)
         input_ids = batch["input_ids"].to(self.device)
         attention_mask = batch["attention_mask"].to(self.device)
         labels = batch["label"].to(self.device)
         outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
         loss = outputs.loss
-        # if GpuDeviceHandler.is_model_using_data_parallel(model):
-        #     loss = loss.sum()
         logits = outputs.logits
         predicted_labels = torch.argmax(logits, dim=1)
 
@@ -60,5 +57,5 @@ class ClassifierFineTuningBatchValidationStep(IBatchValidationStep):
                     for k in range(5)
                 ]
             ),
-            val_loss=loss.item(),
+            val_loss=loss.item() * batch_size,
         )

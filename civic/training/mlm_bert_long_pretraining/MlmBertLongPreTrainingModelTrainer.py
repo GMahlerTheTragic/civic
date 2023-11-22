@@ -1,10 +1,20 @@
-import numpy as np
-from torch.optim.lr_scheduler import LambdaLR
+import math
+from dataclasses import dataclass, field
+
 from torch.utils.data import DataLoader
 import torch
-from civic.monitoring import ITrainingMonitor
-from civic.training import IBatchTrainingStep, IBatchValidationStep
-from civic.training.IModelTrainer import IModelTrainer
+from transformers import (
+    TextDataset,
+    DataCollatorForLanguageModeling,
+    Trainer,
+    HfArgumentParser,
+    TrainingArguments,
+)
+
+from civic.monitoring import TrainingMonitor
+from civic.training.BatchTrainingStep import BatchTrainingStep
+from civic.training.BatchValidationStep import BatchValidationStep
+from civic.training.ModelTrainer import ModelTrainer
 
 CLASS_PROBABILITIES = torch.tensor(
     [121 / 3991, 1327 / 3991, 1368 / 3991, 1145 / 3991, 30 / 3991]
@@ -25,12 +35,64 @@ def lr_lambda(epoch):
         return 1
 
 
-class MlmBertLongPreTrainingModelTrainer(IModelTrainer):
+@dataclass
+class ModelArgs:
+    attention_window: int = field(
+        default=512, metadata={"help": "Size of attention window"}
+    )
+    max_pos: int = field(default=1024, metadata={"help": "Maximum position"})
+
+
+parser = HfArgumentParser(
+    (
+        TrainingArguments,
+        ModelArgs,
+    )
+)
+
+
+training_args, model_args = parser.parse_args_into_dataclasses(
+    look_for_args_file=False,
+    args=[
+        "--output_dir",
+        "tmp",
+        "--warmup_steps",
+        "500",
+        "--learning_rate",
+        "0.00003",
+        "--weight_decay",
+        "0.01",
+        "--adam_epsilon",
+        "1e-6",
+        "--max_steps",
+        "3000",
+        "--logging_steps",
+        "500",
+        "--save_steps",
+        "500",
+        "--max_grad_norm",
+        "5.0",
+        "--per_gpu_eval_batch_size",
+        "8",
+        "--per_gpu_train_batch_size",
+        "2",  # 32GB gpu with fp32
+        "--gradient_accumulation_steps",
+        "32",
+        "--evaluate_during_training",
+        "--do_train",
+        "--do_eval",
+    ],
+)
+training_args.val_datapath = "wikitext-103-raw/wiki.valid.raw"
+training_args.train_datapath = "wikitext-103-raw/wiki.train.raw"
+
+
+class MlmBertLongPreTrainingModelTrainer(ModelTrainer):
     def __init__(
         self,
-        training_monitor: ITrainingMonitor,
-        batch_training_step: IBatchTrainingStep,
-        batch_validation_step: IBatchValidationStep,
+        training_monitor: TrainingMonitor,
+        batch_training_step: BatchTrainingStep,
+        batch_validation_step: BatchValidationStep,
         train_data_loader: DataLoader,
         validation_data_loader: DataLoader,
         model,
@@ -45,71 +107,48 @@ class MlmBertLongPreTrainingModelTrainer(IModelTrainer):
         self.optimizer = optimizer
 
     def do_model_training(self, n_epochs):
-        scheduler = LambdaLR(self.optimizer, lr_lambda=lr_lambda)
-        with self.training_monitor as tm:
-            best_val_loss = np.Inf
-            for e in range(1, n_epochs):
-                self.model.train()
-                train_loss = 0
-                idx = 0
-                for batch in self.train_data_loader:
-                    train_loss += self.batch_training_step.train_batch(
-                        batch, self.model, self.optimizer, None
-                    )
-                    idx += 1
-                    print(
-                        f"\rProcessed {idx}/{len(self.train_data_loader)} batches",
-                        end="",
-                        flush=True,
-                    )
-                scheduler.step()
-                total_number_of_samples = 0
-                total_correct = 0
-                total_true_positives = 0
-                total_false_positives = 0
-                total_false_negatives = 0
-                total_validation_loss = 0
+        """TODO"""
+        pass
 
-                with torch.no_grad():
-                    for batch in self.validation_data_loader:
-                        validation_metrics = self.batch_validation_step.validate_batch(
-                            batch, self.model
-                        )
-                        total_number_of_samples += validation_metrics["num_samples"]
-                        total_correct += validation_metrics["num_correct"]
-                        total_true_positives += validation_metrics["true_positives"]
-                        total_false_positives += validation_metrics["false_positives"]
-                        total_false_negatives += validation_metrics["false_negatives"]
-                        total_validation_loss += validation_metrics["val_loss"]
+    @staticmethod
+    def do_pre_training(args, model, tokenizer, eval_only, model_path):
+        val_dataset = TextDataset(
+            tokenizer=tokenizer,
+            file_path=args.val_datapath,
+            block_size=tokenizer.max_len,
+        )
+        if eval_only:
+            train_dataset = val_dataset
+        else:
+            print(
+                f"Loading and tokenizing training data is usually slow: {args.train_datapath}"
+            )
+            train_dataset = TextDataset(
+                tokenizer=tokenizer,
+                file_path=args.train_datapath,
+                block_size=tokenizer.max_len,
+            )
 
-                    accuracy = total_correct / total_number_of_samples
-                    f1_scores = (2 * total_true_positives) / (
-                        2 * total_true_positives
-                        + total_false_positives
-                        + total_false_negatives
-                    )
-                    micro_f1_score = (f1_scores * CLASS_PROBABILITIES).sum().item()
-                    tm.log_training_metrics(
-                        e,
-                        n_epochs,
-                        {
-                            "train_loss": train_loss
-                            / (
-                                len(self.train_data_loader)
-                                * self.train_data_loader.batch_size
-                            ),
-                            "val_loss": total_validation_loss
-                            / (
-                                len(self.validation_data_loader)
-                                * self.validation_data_loader.batch_size
-                            ),
-                            "accuracy": accuracy,
-                            "micro-f1-score": micro_f1_score,
-                            "learning_rate": self.optimizer.param_groups[0]["lr"],
-                        },
-                    )
-                    if total_validation_loss < best_val_loss:
-                        best_val_loss = total_validation_loss
-                        tm.save_model_checkpoint(
-                            e, self.model, self.optimizer, train_loss
-                        )
+        data_collator = DataCollatorForLanguageModeling(
+            tokenizer=tokenizer, mlm=True, mlm_probability=0.15
+        )
+        trainer = Trainer(
+            model=model,
+            args=args,
+            data_collator=data_collator,
+            train_dataset=train_dataset,
+            eval_dataset=val_dataset,
+            prediction_loss_only=True,
+        )
+
+        eval_loss = trainer.evaluate()
+        eval_loss = eval_loss["eval_loss"]
+        print(f"Initial eval bpc: {eval_loss/math.log(2)}")
+
+        if not eval_only:
+            trainer.train(model_path=model_path)
+            trainer.save_model()
+
+            eval_loss = trainer.evaluate()
+            eval_loss = eval_loss["eval_loss"]
+            print(f"Eval bpc after pretraining: {eval_loss/math.log(2)}")
