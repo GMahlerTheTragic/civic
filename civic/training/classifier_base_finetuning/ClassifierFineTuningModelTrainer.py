@@ -14,8 +14,6 @@ CLASS_PROBABILITIES = torch.tensor(
 
 
 class ClassifierFineTuningModelTrainer(ModelTrainer):
-    accelerator = AcceleratorSingleton()
-
     def __init__(
         self,
         training_monitor: TrainingMonitor,
@@ -25,6 +23,7 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
         validation_data_loader: DataLoader,
         model,
         optimizer,
+        accelerator,
     ):
         self.training_monitor = training_monitor
         self.batch_training_step = batch_training_step
@@ -33,6 +32,7 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
         self.validation_data_loader = validation_data_loader
         self.model = model
         self.optimizer = optimizer
+        self.accelerator = accelerator
 
     def do_model_training(self, n_epochs):
         with self.training_monitor as tm:
@@ -41,7 +41,6 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
                 self.accelerator.wait_for_everyone()
                 self.model.train()
                 train_loss = 0
-                print(self.accelerator.accelerator.gradient_accumulation_steps)
                 for idx, batch in enumerate(self.train_data_loader):
                     train_loss += self.batch_training_step.train_batch(
                         batch, self.model, self.optimizer, None
@@ -61,10 +60,8 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
                         validation_metrics = self.batch_validation_step.validate_batch(
                             batch, self.model
                         )
-                        validation_metrics = (
-                            self.accelerator.accelerator.gather_for_metrics(
-                                [validation_metrics]
-                            )
+                        validation_metrics = self.accelerator.gather_for_metrics(
+                            [validation_metrics]
                         )
                         for vm in validation_metrics:
                             metrics_aggregator.accumulate(vm)
@@ -74,14 +71,12 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
                             end="",
                             flush=True,
                         )
-                train_loss = sum(
-                    self.accelerator.accelerator.gather_for_metrics([train_loss])
-                )
+                train_loss = sum(self.accelerator.gather_for_metrics([train_loss]))
                 print(
                     (
                         self.train_data_loader.batch_sampler.batch_size
                         * len(self.train_data_loader)
-                        * self.accelerator.accelerator.num_processes
+                        * self.accelerator.num_processes
                     )
                 )
                 accuracy = metrics_aggregator.accuracy()
@@ -96,7 +91,7 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
                         / (
                             self.train_data_loader.batch_sampler.batch_size
                             * len(self.train_data_loader)
-                            * self.accelerator.accelerator.num_processes
+                            * self.accelerator.num_processes
                         ),
                         "val_loss": average_validation_loss,
                         "accuracy": accuracy,

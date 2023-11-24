@@ -9,9 +9,8 @@ from civic.utils.filesystem_utils import create_folder_if_not_exists
 
 
 class WandbTrainingMonitor(ITrainingMonitor):
-    accelerator = AcceleratorSingleton()
-
-    def __init__(self, config):
+    def __init__(self, accelerator, config):
+        self.accelerator = accelerator
         self.accelerator.accelerator.init_trackers(
             project_name="civic",
             config=config,
