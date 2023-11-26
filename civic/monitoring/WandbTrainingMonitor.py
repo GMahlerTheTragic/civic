@@ -31,18 +31,11 @@ class WandbTrainingMonitor(ITrainingMonitor):
     ):
         self.accelerator.wait_for_everyone()
         if self.accelerator.is_local_main_process():
-            create_folder_if_not_exists(MODEL_CHECKPOINT_DIR)
             run_name = self.accelerator.accelerator.get_tracker("wandb").run.name
-            torch.save(
-                {
-                    "epoch": epoch,
-                    "model_state_dict": self.accelerator.accelerator.unwrap_model(
-                        model
-                    ).state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "loss": training_loss,
-                },
-                os.path.join(MODEL_CHECKPOINT_DIR, run_name),
+            save_folder = os.path.join(MODEL_CHECKPOINT_DIR, run_name)
+            create_folder_if_not_exists(save_folder)
+            self.accelerator.accelerator.unwrap_model(model).save_pretrained(
+                save_folder
             )
 
     def log_training_metrics(self, epoch, total_epochs, metrics):

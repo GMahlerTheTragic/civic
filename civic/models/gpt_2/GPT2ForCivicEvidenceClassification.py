@@ -9,5 +9,4 @@ class GPT2ForCivicEvidenceClassification:
         model = GPT2ForSequenceClassification.from_pretrained(model_name, num_labels=5)
         tokenizer.pad_token_id = 50256
         model.config.pad_token_id = 50256
-        tokenizer.padding_side = "left"
         return tokenizer, model

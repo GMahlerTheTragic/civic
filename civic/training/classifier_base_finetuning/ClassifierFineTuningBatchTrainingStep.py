@@ -12,14 +12,11 @@ class ClassifierFineTuningBatchTrainingStep(BatchTrainingStep):
             input_ids = batch["input_ids"].to(self.device)
             attention_mask = batch["attention_mask"].to(self.device)
             labels = batch["label"].to(self.device)
-            optimizer.zero_grad()
-
             outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
             loss = outputs.loss
-
             self.accelerator.backward(loss)
             optimizer.step()
             if lr_scheduler:
                 lr_scheduler.step()
-
+            optimizer.zero_grad()
         return loss.item() * batch_size

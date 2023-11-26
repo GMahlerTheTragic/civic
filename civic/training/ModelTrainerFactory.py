@@ -1,4 +1,10 @@
 from torch.utils.data import DataLoader
+from transformers import (
+    GPT2ForSequenceClassification,
+    BertForSequenceClassification,
+    RobertaForSequenceClassification,
+    LongformerForSequenceClassification,
+)
 
 from civic.datasets.CivicEvidenceDataSet import CivicEvidenceDataSet
 from civic.models.bert.BertForCivicEvidenceClassification import (
@@ -111,12 +117,14 @@ class ModelTrainerFactory:
         )
 
     def create_longformer_base_finetuning_model_trainer(
-        self, learning_rate, batch_size
+        self, learning_rate, batch_size, snapshot
     ) -> ModelTrainer:
         (
             tokenizer,
             model,
         ) = RobertaForCivicEvidenceClassification.from_longformer_base()
+        if snapshot:
+            model = LongformerForSequenceClassification.from_pretrained(snapshot)
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -128,12 +136,14 @@ class ModelTrainerFactory:
         )
 
     def create_roberta_base_finetuning_model_trainer(
-        self, learning_rate, batch_size
+        self, learning_rate, batch_size, snapshot
     ) -> ModelTrainer:
         (
             tokenizer,
             model,
         ) = RobertaForCivicEvidenceClassification.from_roberta_base()
+        if snapshot:
+            model = RobertaForSequenceClassification.from_pretrained(snapshot)
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -145,12 +155,14 @@ class ModelTrainerFactory:
         )
 
     def create_biomed_roberta_base_finetuning_model_trainer(
-        self, learning_rate, batch_size
+        self, learning_rate, batch_size, snapshot
     ) -> ModelTrainer:
         (
             tokenizer,
             model,
         ) = RobertaForCivicEvidenceClassification.from_biomed_roberta_base()
+        if snapshot:
+            model = RobertaForSequenceClassification.from_pretrained(snapshot)
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -162,12 +174,14 @@ class ModelTrainerFactory:
         )
 
     def create_bert_base_finetuning_model_trainer(
-        self, learning_rate, batch_size
+        self, learning_rate, batch_size, snapshot
     ) -> ModelTrainer:
         (
             tokenizer,
             model,
         ) = BertForCivicEvidenceClassification.from_bert_base_uncased()
+        if snapshot:
+            model = BertForSequenceClassification.from_pretrained(snapshot)
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -179,12 +193,14 @@ class ModelTrainerFactory:
         )
 
     def create_pubmed_bert_finetuning_model_trainer(
-        self, learning_rate, batch_size
+        self, learning_rate, batch_size, snapshot
     ) -> ModelTrainer:
         (
             tokenizer,
             model,
         ) = BertForCivicEvidenceClassification.from_pubmed_bert()
+        if snapshot:
+            model = BertForSequenceClassification.from_pretrained(snapshot)
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -196,12 +212,14 @@ class ModelTrainerFactory:
         )
 
     def create_bio_link_bert_finetuning_model_trainer(
-        self, learning_rate, batch_size
+        self, learning_rate, batch_size, snapshot
     ) -> ModelTrainer:
         (
             tokenizer,
             model,
         ) = BertForCivicEvidenceClassification.from_bio_link_bert()
+        if snapshot:
+            model = BertForSequenceClassification.from_pretrained(snapshot)
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -213,12 +231,14 @@ class ModelTrainerFactory:
         )
 
     def create_biomed_lm_finetuning_model_trainer(
-        self, learning_rate, batch_size
+        self, learning_rate, batch_size, snapshot
     ) -> ModelTrainer:
         (
             tokenizer,
             model,
         ) = GPT2ForCivicEvidenceClassification.from_biomed_lm_snapshot()
+        if snapshot:
+            model = GPT2ForSequenceClassification.from_pretrained(snapshot)
         return self._get_trainer_from_model(
             model,
             tokenizer,

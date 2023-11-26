@@ -92,13 +92,13 @@ def do_data_cleaning(data):
 
 def get_stratified_train_test_split(data, test_size, class_col):
     train_data, test_data = train_test_split(
-        data, test_size=test_size, stratify=data[class_col]
+        data, test_size=test_size, stratify=data[class_col], random_state=42
     )
     return train_data, test_data
 
 
 if __name__ == "__main__":
-    create_folder_if_not_exists(os.path.join(DATA_PROCESSED_DIR, "data/02_processed"))
+    create_folder_if_not_exists(DATA_PROCESSED_DIR)
 
     df = pd.read_csv(os.path.join(DATA_RAW_DIR, "civic_evidence.csv"))
     print(f"Retrieved {df.shape[0]} records")
@@ -113,9 +113,15 @@ if __name__ == "__main__":
     train_data_full, test_data_full = get_stratified_train_test_split(
         df, 0.2, "evidenceLevel"
     )
+    val_data_full, test_data_full = get_stratified_train_test_split(
+        test_data_full, 0.5, "evidenceLevel"
+    )
     print(f"The full training set has {train_data_full.shape[0]} records")
     print(THE_CLASS_DISTRIBUTION_IS)
     print(train_data_full.evidenceLevel.value_counts(normalize=True))
+    print(f"The full val set has {val_data_full.shape[0]} records")
+    print(THE_CLASS_DISTRIBUTION_IS)
+    print(val_data_full.evidenceLevel.value_counts(normalize=True))
     print(f"The full test set has {test_data_full.shape[0]} records")
     print(THE_CLASS_DISTRIBUTION_IS)
     print(test_data_full.evidenceLevel.value_counts(normalize=True))
@@ -135,6 +141,7 @@ if __name__ == "__main__":
 
     print("Success: Writing to CSV")
     train_data_full.to_csv(os.path.join(DATA_PROCESSED_DIR, "civic_evidence_train.csv"))
+    val_data_full.to_csv(os.path.join(DATA_PROCESSED_DIR, "civic_evidence_val.csv"))
     test_data_full.to_csv(os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test.csv"))
     train_data_accepted_only.to_csv(
         os.path.join(
