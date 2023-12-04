@@ -1,6 +1,7 @@
 import os.path
 
 from datasets import load_from_disk, Dataset
+from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 from transformers import (
     GPT2ForSequenceClassification,
@@ -67,12 +68,17 @@ class ModelTrainerFactory:
         validation_data_loader = DataLoader(test_dataset, batch_size=batch_size)
         return train_data_loader, validation_data_loader
 
-    def _get_classification_steps(self):
+    def _get_classification_steps(self, weights=None):
+        criterion = (
+            CrossEntropyLoss(reduction="sum", weight=weights.float())
+            if weights is not None
+            else None
+        )
         batch_training_step: BatchTrainingStep = ClassifierFineTuningBatchTrainingStep(
-            self.accelerator.device, self.accelerator
+            self.accelerator.device, self.accelerator, criterion
         )
         batch_validation_step: BatchValidationStep = (
-            ClassifierFineTuningBatchValidationStep(self.accelerator.device)
+            ClassifierFineTuningBatchValidationStep(self.accelerator.device, criterion)
         )
         return batch_training_step, batch_validation_step
 
@@ -86,14 +92,20 @@ class ModelTrainerFactory:
         snapshot_name,
         tokenizer_max_length,
         gradient_accumulation_steps=1,
+        weighted=False,
     ):
         model.to(self.accelerator.device)
-        batch_training_step, batch_validation_step = self._get_classification_steps()
         (
             train_data_loader,
             validation_data_loader,
         ) = ModelTrainerFactory._get_dataloaders_for_civic_evidence_finetuning(
             tokenizer, batch_size, tokenizer_max_length
+        )
+        weights = (
+            train_data_loader.dataset.inverse_class_prob_weights if weighted else None
+        )
+        batch_training_step, batch_validation_step = self._get_classification_steps(
+            weights=weights
         )
         training_monitor: TrainingMonitor = WandbTrainingMonitor(
             accelerator=self.accelerator,
@@ -105,6 +117,7 @@ class ModelTrainerFactory:
                 "batch_size": batch_size,
                 "gradient_accumulation_steps": gradient_accumulation_steps,
                 "num_processes": self.accelerator.num_processes,
+                "weighted": "True" if weighted else "False",
                 "effective_batch_size": batch_size
                 * gradient_accumulation_steps
                 * self.accelerator.num_processes,
@@ -130,7 +143,7 @@ class ModelTrainerFactory:
         )
 
     def create_longformer_base_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot
+        self, learning_rate, batch_size, snapshot, weighted=False
     ) -> ModelTrainer:
         (
             tokenizer,
@@ -146,10 +159,11 @@ class ModelTrainerFactory:
             architecture="longformer",
             snapshot_name="allenai-longformer-base",
             tokenizer_max_length=4096,
+            weighted=weighted,
         )
 
     def create_roberta_base_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot
+        self, learning_rate, batch_size, snapshot, weighted=False
     ) -> ModelTrainer:
         (
             tokenizer,
@@ -165,10 +179,11 @@ class ModelTrainerFactory:
             architecture="roberta",
             snapshot_name="roberta-base",
             tokenizer_max_length=512,
+            weighted=weighted,
         )
 
     def create_biomed_roberta_base_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot
+        self, learning_rate, batch_size, snapshot, weighted=False
     ) -> ModelTrainer:
         (
             tokenizer,
@@ -184,10 +199,11 @@ class ModelTrainerFactory:
             architecture="roberta",
             snapshot_name="biomed_roberta_base",
             tokenizer_max_length=512,
+            weighted=weighted,
         )
 
     def create_biomed_roberta_long_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot
+        self, learning_rate, batch_size, snapshot, weighted=False
     ) -> ModelTrainer:
         (
             tokenizer,
@@ -203,10 +219,11 @@ class ModelTrainerFactory:
             architecture="roberta_long",
             snapshot_name="biomed_roberta_long",
             tokenizer_max_length=1024,
+            weighted=weighted,
         )
 
     def create_bert_base_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot
+        self, learning_rate, batch_size, snapshot, weighted=False
     ) -> ModelTrainer:
         (
             tokenizer,
@@ -222,10 +239,11 @@ class ModelTrainerFactory:
             architecture="bert",
             snapshot_name="bert-base-uncased",
             tokenizer_max_length=512,
+            weighted=weighted,
         )
 
     def create_pubmed_bert_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot
+        self, learning_rate, batch_size, snapshot, weighted=False
     ) -> ModelTrainer:
         (
             tokenizer,
@@ -241,10 +259,11 @@ class ModelTrainerFactory:
             architecture="bert",
             snapshot_name="pubmed_bert",
             tokenizer_max_length=512,
+            weighted=weighted,
         )
 
     def create_bio_link_bert_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot
+        self, learning_rate, batch_size, snapshot, weighted=False
     ) -> ModelTrainer:
         (
             tokenizer,
@@ -260,10 +279,11 @@ class ModelTrainerFactory:
             architecture="bert",
             snapshot_name="bio_link_bert",
             tokenizer_max_length=512,
+            weighted=weighted,
         )
 
     def create_bio_link_bert_large_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot
+        self, learning_rate, batch_size, snapshot, weighted=False
     ) -> ModelTrainer:
         (
             tokenizer,
@@ -279,10 +299,11 @@ class ModelTrainerFactory:
             architecture="bert",
             snapshot_name="bio_link_bert_long",
             tokenizer_max_length=512,
+            weighted=weighted,
         )
 
     def create_biomed_lm_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot
+        self, learning_rate, batch_size, snapshot, weighted=False
     ) -> ModelTrainer:
         (
             tokenizer,
@@ -298,6 +319,7 @@ class ModelTrainerFactory:
             architecture="gpt2",
             snapshot_name="biomed_lm",
             tokenizer_max_length=1024,
+            weighted=weighted,
         )
 
     @staticmethod

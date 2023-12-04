@@ -37,7 +37,7 @@ class WandbTrainingMonitor(ITrainingMonitor):
 
     def log_training_metrics(self, epoch, total_epochs, metrics):
         self.accelerator.log({"Epoch": epoch, **metrics})
-        log_string = f"\nEpoch {epoch + 1}/{total_epochs}: "
+        log_string = f"\nEpoch {epoch}/{total_epochs}: "
         for metric, value in metrics.items():
             log_string += f"{metric}: {value:.10f} | "
         self.accelerator.print(log_string)

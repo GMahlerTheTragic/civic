@@ -57,6 +57,7 @@ parser.add_argument(
 parser.add_argument(
     "--accumulation", type=positive_integer, help="Gradient accumulation steps"
 )
+parser.add_argument("--weighted", type=bool)
 parser.add_argument("--resume")
 args = parser.parse_args()
 
@@ -65,52 +66,53 @@ def main():
     accelerator = AcceleratorSingleton(gradient_accumulation_steps=args.accumulation)
     model_trainer_factory = ModelTrainerFactory(accelerator)
     snapshot = args.resume if args.resume else None
+    compute_weighted_loss = args.weighted
     if args.instance == "Bert":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_bert_base_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot
+                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
             )
         )
     elif args.instance == "PubmedBert":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_pubmed_bert_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot
+                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
             )
         )
     elif args.instance == "BiolinkBert":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_bio_link_bert_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot
+                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
             )
         )
     elif args.instance == "BiolinkBertLarge":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_bio_link_bert_large_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot
+                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
             )
         )
     elif args.instance == "Roberta":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_roberta_base_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot
+                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
             )
         )
     elif args.instance == "BiomedRoberta":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_biomed_roberta_base_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot
+                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
             )
         )
     elif args.instance == "BiomedRobertaLong":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_biomed_roberta_long_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot
+                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
             )
         )
     elif args.instance == "Longformer":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_longformer_base_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot
+                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
             )
         )
     elif args.instance == "BioMedLMFineTuning":

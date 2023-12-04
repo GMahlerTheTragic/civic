@@ -4,8 +4,9 @@ import torch
 
 
 class ClassifierFineTuningBatchValidationStep(BatchValidationStep):
-    def __init__(self, device):
+    def __init__(self, device, criterion=None):
         self.device = device
+        self.criterion = criterion.to(self.device)
 
     @staticmethod
     def _compute_true_positives(predicted_labels, labels, label: int):
@@ -32,8 +33,13 @@ class ClassifierFineTuningBatchValidationStep(BatchValidationStep):
         attention_mask = batch["attention_mask"].to(self.device)
         labels = batch["label"].to(self.device)
         outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-        loss = outputs.loss
         logits = outputs.logits
+
+        if self.criterion:
+            loss = self.criterion(logits, labels)
+        else:
+            loss = outputs.loss
+
         predicted_labels = torch.argmax(logits, dim=1)
 
         return MetricsContainer(

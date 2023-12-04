@@ -37,7 +37,7 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
     def do_model_training(self, n_epochs):
         with self.training_monitor as tm:
             best_val_loss = np.Inf
-            for e in range(1, n_epochs):
+            for e in range(1, n_epochs + 1):
                 self.accelerator.wait_for_everyone()
                 self.model.train()
                 train_loss = 0
@@ -54,7 +54,7 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
                 metrics_aggregator = MetricsAggregator()
                 self.accelerator.wait_for_everyone()
                 with torch.no_grad():
-                    self.accelerator.print("\n Validation Loop \n")
+                    self.accelerator.print("\r Validation Loop")
                     idx = 0
                     for batch in self.validation_data_loader:
                         validation_metrics = self.batch_validation_step.validate_batch(
@@ -72,13 +72,6 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
                             flush=True,
                         )
                 train_loss = sum(self.accelerator.gather_for_metrics([train_loss]))
-                print(
-                    (
-                        self.train_data_loader.batch_sampler.batch_size
-                        * len(self.train_data_loader)
-                        * self.accelerator.num_processes
-                    )
-                )
                 accuracy = metrics_aggregator.accuracy()
                 f1_scores = metrics_aggregator.f1_scores()
                 average_validation_loss = metrics_aggregator.average_loss()

@@ -157,7 +157,8 @@ class CivicEvidenceDataSet(Dataset):
 
     @property
     def class_probabilities(self):
-        return torch.tensor(list(self.labels.value_counts(normalize=True)))
+        value_counts = self.labels.value_counts(normalize=True)
+        return torch.tensor([value_counts.loc[i] for i in range(5)])
 
     @property
     def inverse_class_prob_weights(self):
