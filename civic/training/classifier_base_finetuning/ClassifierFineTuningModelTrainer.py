@@ -6,7 +6,7 @@ from civic.metrics.MetricsAggregator import MetricsAggregator
 from civic.monitoring import TrainingMonitor
 from civic.training import BatchTrainingStep, BatchValidationStep
 from civic.training.ModelTrainer import ModelTrainer
-from civic.utils.AcceleratorSingleton import AcceleratorSingleton
+
 
 CLASS_PROBABILITIES = torch.tensor(
     [121 / 3991, 1327 / 3991, 1368 / 3991, 1145 / 3991, 30 / 3991]
@@ -94,6 +94,7 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
                             * self.accelerator.num_processes
                         ),
                         "val_loss": average_validation_loss,
+                        "best_val_loss": best_val_loss,
                         "accuracy": accuracy,
                         "micro-f1-score": micro_f1_score,
                         "learning_rate": self.optimizer.param_groups[0]["lr"],

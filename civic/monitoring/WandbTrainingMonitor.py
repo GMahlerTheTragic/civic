@@ -2,9 +2,6 @@ import os
 
 from civic.config import MODEL_CHECKPOINT_DIR
 from civic.monitoring.TrainingMonitor import ITrainingMonitor
-import torch
-
-from civic.utils.AcceleratorSingleton import AcceleratorSingleton
 from civic.utils.filesystem_utils import create_folder_if_not_exists
 
 

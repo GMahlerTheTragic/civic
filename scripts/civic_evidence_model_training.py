@@ -1,15 +1,12 @@
-import math
-
-from civic.config import MODEL_STORAGE_DIR
 from civic.models.roberta.RobertaLongModelArgs import RobertaLongModelArgs
 
-
-import os
 import sys
 import argparse
 
-from transformers import HfArgumentParser, TrainingArguments
-
+from transformers import (
+    HfArgumentParser,
+    TrainingArguments,
+)
 
 from civic.training import ModelTrainer
 from civic.training.ModelTrainerFactory import ModelTrainerFactory
@@ -42,6 +39,9 @@ parser.add_argument(
         "BiomedRoberta",
         "Longformer",
         "BioMedLMFineTuning",
+        "BiomedRobertaLongPreTraining",
+        "BiomedRobertaLong",
+        "BiolinkBertLarge",
     ],
     help="What to train for",
 )
@@ -83,6 +83,12 @@ def main():
                 args.learningrate, args.batchsize, snapshot
             )
         )
+    elif args.instance == "BiolinkBertLarge":
+        model_trainer: ModelTrainer = (
+            model_trainer_factory.create_bio_link_bert_large_finetuning_model_trainer(
+                args.learningrate, args.batchsize, snapshot
+            )
+        )
     elif args.instance == "Roberta":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_roberta_base_finetuning_model_trainer(
@@ -92,6 +98,12 @@ def main():
     elif args.instance == "BiomedRoberta":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_biomed_roberta_base_finetuning_model_trainer(
+                args.learningrate, args.batchsize, snapshot
+            )
+        )
+    elif args.instance == "BiomedRobertaLong":
+        model_trainer: ModelTrainer = (
+            model_trainer_factory.create_biomed_roberta_long_finetuning_model_trainer(
                 args.learningrate, args.batchsize, snapshot
             )
         )
@@ -107,60 +119,48 @@ def main():
                 args.learningrate, args.batchsize, snapshot
             )
         )
-    elif args.instance == "BiomedBertPretraining":
+    elif args.instance == "BiomedRobertaLongPreTraining":
         hf_parser = HfArgumentParser(
             (
                 TrainingArguments,
                 RobertaLongModelArgs,
             )
         )
-        training_args, model_args = hf_parser.parse_args_into_dataclasses(
+        training_args, _ = hf_parser.parse_args_into_dataclasses(
             look_for_args_file=False,
             args=[
                 "--output_dir",
-                "tmp",
+                "tmp1",
                 "--warmup_steps",
-                "500",
+                "1500",
                 "--learning_rate",
                 "0.00003",
                 "--weight_decay",
-                "0.01",
+                "0.0",
                 "--adam_epsilon",
                 "1e-6",
                 "--max_steps",
-                "3000",
+                "9000",
                 "--logging_steps",
-                "500",
+                "100",
                 "--save_steps",
                 "500",
                 "--max_grad_norm",
                 "5.0",
                 "--per_device_train_batch_size",
-                "8",
+                "4",
                 "--per_device_eval_batch_size",
-                "2",  # 32GB gpu with fp32
+                "8",  # 32GB gpu with fp32
                 "--gradient_accumulation_steps",
-                "32",
+                "8",
+                "--fp16",
             ],
         )
-        training_args.val_datapath = "data/02_processed/output_file.txt"
-        training_args.train_datapath = "data/02_processed/output_file.txt"
-        model_trainer = (
-            ModelTrainerFactory.create_biomed_roberta_long_pre_training_model_trainer(
-                training_args
+        model_trainer: ModelTrainer = (
+            model_trainer_factory.create_biomed_roberta_long_pre_training_model_trainer(
+                training_args, snapshot
             )
         )
-        model_path = os.path.join(MODEL_STORAGE_DIR, "biomed_roberta_base-1024")
-        print(f"Pretraining roberta-base-{model_args.max_pos} ... ")
-        training_args.max_steps = 3
-        eval_loss = model_trainer.evaluate()
-        eval_loss = eval_loss["eval_loss"]
-        print(f"Initial eval bpc: {eval_loss/math.log(2)}")
-        model_trainer.train(model_path)
-        model_trainer.save_model()
-        eval_loss = model_trainer.evaluate()
-        eval_loss = eval_loss["eval_loss"]
-        print(f"Eval bpc after pretraining: {eval_loss/math.log(2)}")
     else:
         print("Please provide a valid instance name.")
         sys.exit(-1)

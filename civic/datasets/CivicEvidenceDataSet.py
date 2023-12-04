@@ -21,10 +21,22 @@ class CivicEvidenceDataSet(Dataset):
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
+    def full_validation_dataset(tokenizer, tokenizer_max_length):
+        path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_val.csv")
+        if check_file_exists(path_to_file):
+            return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
+        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
+
+    @staticmethod
     def full_test_dataset(tokenizer, tokenizer_max_length):
         path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test.csv")
         if check_file_exists(path_to_file):
-            return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
+            return CivicEvidenceDataSet(
+                path_to_file,
+                tokenizer,
+                tokenizer_max_length,
+                return_ref_tokens_for_ig=True,
+            )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
@@ -49,7 +61,13 @@ class CivicEvidenceDataSet(Dataset):
     def _map_to_numerical(evidence_level):
         return EVIDENCE_LEVEL_TO_NUMBER.get(evidence_level, np.nan)
 
-    def __init__(self, path_to_data, tokenizer, tokenizer_max_length):
+    def __init__(
+        self,
+        path_to_data,
+        tokenizer,
+        tokenizer_max_length,
+        return_ref_tokens_for_ig=False,
+    ):
         df = pd.read_csv(path_to_data)
         self.evidence_levels = df["evidenceLevel"]
         self.labels = df["evidenceLevel"].map(self._map_to_numerical)
@@ -57,6 +75,7 @@ class CivicEvidenceDataSet(Dataset):
         self.prepend_string = df["prependString"]
         self.tokenizer = tokenizer
         self.tokenizer_max_length = tokenizer_max_length
+        self.return_ref_tokens_for_ig = return_ref_tokens_for_ig
 
     def __len__(self):
         return len(self.labels)
@@ -70,7 +89,7 @@ class CivicEvidenceDataSet(Dataset):
 
         if not self.tokenizer.pad_token:
             self.tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-        # Tokenize the abstract and convert it into input features
+
         encoding = self.tokenizer.encode_plus(
             input_string,
             add_special_tokens=True,
@@ -81,11 +100,32 @@ class CivicEvidenceDataSet(Dataset):
         )
 
         input_ids = encoding["input_ids"]
+
         attention_mask = encoding["attention_mask"]
 
-        return {
+        outputs = {
             "input_ids": input_ids.squeeze(),
             "attention_mask": attention_mask.squeeze(),
             "label": torch.tensor(label),
             "evidence_level": evidence_level,
         }
+
+        if self.return_ref_tokens_for_ig:
+            input_ref_ids = torch.tensor(
+                [self.tokenizer.cls_token_id]
+                + [self.tokenizer.pad_token_id] * (self.tokenizer_max_length - 2)
+                + [self.tokenizer.sep_token_id]
+            )
+            outputs["input_ref_ids"] = input_ref_ids
+
+        return outputs
+
+    @property
+    def class_probabilities(self):
+        return torch.tensor(list(self.labels.value_counts(normalize=True)))
+
+    @property
+    def inverse_class_prob_weights(self):
+        probs = self.class_probabilities
+        weights = 1 / probs
+        return weights / weights.sum()

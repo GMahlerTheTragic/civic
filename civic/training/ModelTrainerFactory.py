@@ -1,11 +1,17 @@
+import os.path
+
+from datasets import load_from_disk, Dataset
 from torch.utils.data import DataLoader
 from transformers import (
     GPT2ForSequenceClassification,
     BertForSequenceClassification,
     RobertaForSequenceClassification,
     LongformerForSequenceClassification,
+    DataCollatorForLanguageModeling,
+    Trainer,
 )
 
+from civic.config import HF_DATA_CACHE_DIR
 from civic.datasets.CivicEvidenceDataSet import CivicEvidenceDataSet
 from civic.models.bert.BertForCivicEvidenceClassification import (
     BertForCivicEvidenceClassification,
@@ -15,6 +21,10 @@ from civic.models.gpt_2.GPT2ForCivicEvidenceClassification import (
 )
 from civic.models.roberta.RobertaForCivicEvidenceClassification import (
     RobertaForCivicEvidenceClassification,
+)
+from civic.models.roberta.RobertaLongForMaskedLM import RobertaLongForMaskedLM
+from civic.models.roberta.RobertaLongForSequenceClassification import (
+    RobertaLongForSequenceClassification,
 )
 from civic.monitoring import TrainingMonitor
 from civic.monitoring.WandbTrainingMonitor import WandbTrainingMonitor
@@ -31,6 +41,9 @@ from torch.optim import AdamW
 from civic.training.classifier_base_finetuning.ClassifierFineTuningBatchTrainingStep import (
     ClassifierFineTuningBatchTrainingStep,
 )
+from civic.training.mlm_bert_long_pretraining.MlmBertLongPreTrainingModelTrainer import (
+    MlmRobertaLongPreTrainingModelTrainer,
+)
 
 
 class ModelTrainerFactory:
@@ -44,7 +57,7 @@ class ModelTrainerFactory:
         train_dataset = CivicEvidenceDataSet.full_train_dataset(
             tokenizer, tokenizer_max_length
         )
-        test_dataset = CivicEvidenceDataSet.full_test_dataset(
+        test_dataset = CivicEvidenceDataSet.full_validation_dataset(
             tokenizer, tokenizer_max_length
         )
 
@@ -97,7 +110,7 @@ class ModelTrainerFactory:
                 * self.accelerator.num_processes,
             },
         )
-        optimizer = AdamW(model.parameters(), lr=learning_rate)
+        optimizer = AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
         (
             model,
             optimizer,
@@ -173,6 +186,25 @@ class ModelTrainerFactory:
             tokenizer_max_length=512,
         )
 
+    def create_biomed_roberta_long_finetuning_model_trainer(
+        self, learning_rate, batch_size, snapshot
+    ) -> ModelTrainer:
+        (
+            tokenizer,
+            model,
+        ) = RobertaForCivicEvidenceClassification.from_long_biomed_roberta_pretrained()
+        if snapshot:
+            model = RobertaLongForSequenceClassification.from_pretrained(snapshot)
+        return self._get_trainer_from_model(
+            model,
+            tokenizer,
+            batch_size,
+            learning_rate,
+            architecture="roberta_long",
+            snapshot_name="biomed_roberta_long",
+            tokenizer_max_length=1024,
+        )
+
     def create_bert_base_finetuning_model_trainer(
         self, learning_rate, batch_size, snapshot
     ) -> ModelTrainer:
@@ -230,6 +262,25 @@ class ModelTrainerFactory:
             tokenizer_max_length=512,
         )
 
+    def create_bio_link_bert_large_finetuning_model_trainer(
+        self, learning_rate, batch_size, snapshot
+    ) -> ModelTrainer:
+        (
+            tokenizer,
+            model,
+        ) = BertForCivicEvidenceClassification.from_bio_link_bert_large()
+        if snapshot:
+            model = BertForSequenceClassification.from_pretrained(snapshot)
+        return self._get_trainer_from_model(
+            model,
+            tokenizer,
+            batch_size,
+            learning_rate,
+            architecture="bert",
+            snapshot_name="bio_link_bert_long",
+            tokenizer_max_length=512,
+        )
+
     def create_biomed_lm_finetuning_model_trainer(
         self, learning_rate, batch_size, snapshot
     ) -> ModelTrainer:
@@ -249,6 +300,27 @@ class ModelTrainerFactory:
             tokenizer_max_length=1024,
         )
 
-    def create_biomed_roberta_long_pre_training_model_trainer(self, training_args):
-        """TODO"""
-        pass
+    @staticmethod
+    def create_biomed_roberta_long_pre_training_model_trainer(training_args, snapshot):
+        tokenizer, model = RobertaLongForMaskedLM.from_biomed_roberta_snapshot()
+        print(model)
+        if snapshot:
+            print(f"loading model from snapshot {snapshot}")
+        data_collator = DataCollatorForLanguageModeling(
+            tokenizer=tokenizer, mlm=True, mlm_probability=0.15
+        )
+        dataset = load_from_disk(
+            os.path.join(
+                HF_DATA_CACHE_DIR, "pubmed-central-cache/pmc/open_access_processed"
+            )
+        )
+        train_dataset = dataset["train"]
+        val_dataset = Dataset.from_dict(dataset["test"][:3000])
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            data_collator=data_collator,
+            train_dataset=train_dataset,
+            eval_dataset=val_dataset,
+        )
+        return MlmRobertaLongPreTrainingModelTrainer(trainer)

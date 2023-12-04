@@ -30,3 +30,9 @@ class BertForCivicEvidenceClassification:
         return BertForCivicEvidenceClassification._create_tokenizer_and_model_from_snapshot(
             "michiyasunaga/BioLinkBERT-base"
         )
+
+    @staticmethod
+    def from_bio_link_bert_large():
+        return BertForCivicEvidenceClassification._create_tokenizer_and_model_from_snapshot(
+            "michiyasunaga/BioLinkBERT-large"
+        )
