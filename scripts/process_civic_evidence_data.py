@@ -126,6 +126,13 @@ if __name__ == "__main__":
     print(THE_CLASS_DISTRIBUTION_IS)
     print(test_data_full.evidenceLevel.value_counts(normalize=True))
 
+    print("Creating Test Data Set for GPT-4 API - using 5 rows per evidence Level.")
+    sampled_rows = [
+        test_data_full[test_data_full["evidenceLevel"] == i].sample(5)
+        for i in ["A", "B", "C", "D", "E"]
+    ]
+    test_data_full_gpt_4 = pd.concat(sampled_rows, axis=0).reset_index(drop=True)
+
     print("Creating stratified train-test split based on accepted records only")
     train_data_accepted_only, test_data_accepted_only = get_stratified_train_test_split(
         df.loc[df.status == "ACCEPTED"], 0.2, "evidenceLevel"
@@ -143,6 +150,9 @@ if __name__ == "__main__":
     train_data_full.to_csv(os.path.join(DATA_PROCESSED_DIR, "civic_evidence_train.csv"))
     val_data_full.to_csv(os.path.join(DATA_PROCESSED_DIR, "civic_evidence_val.csv"))
     test_data_full.to_csv(os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test.csv"))
+    test_data_full_gpt_4.to_csv(
+        os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test_gpt4.csv")
+    )
     train_data_accepted_only.to_csv(
         os.path.join(
             DATA_PROCESSED_DIR,

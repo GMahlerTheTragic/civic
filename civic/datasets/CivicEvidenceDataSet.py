@@ -17,22 +17,25 @@ class CivicEvidenceDataSet(Dataset):
     def full_train_dataset(tokenizer, tokenizer_max_length):
         path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_train.csv")
         if check_file_exists(path_to_file):
-            return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
+            df = pd.read_csv(path_to_file)
+            return CivicEvidenceDataSet(df, tokenizer, tokenizer_max_length)
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
     def full_validation_dataset(tokenizer, tokenizer_max_length):
         path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_val.csv")
         if check_file_exists(path_to_file):
-            return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
+            df = pd.read_csv(path_to_file)
+            return CivicEvidenceDataSet(df, tokenizer, tokenizer_max_length)
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
     def full_test_dataset(tokenizer, tokenizer_max_length):
         path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test.csv")
         if check_file_exists(path_to_file):
+            df = pd.read_csv(path_to_file)
             return CivicEvidenceDataSet(
-                path_to_file,
+                df,
                 tokenizer,
                 tokenizer_max_length,
                 return_ref_tokens_for_ig=True,
@@ -45,7 +48,8 @@ class CivicEvidenceDataSet(Dataset):
             DATA_PROCESSED_DIR, "civic_evidence_train_accepted_only.csv"
         )
         if check_file_exists(path_to_file):
-            return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
+            df = pd.read_csv(path_to_file)
+            return CivicEvidenceDataSet(df, tokenizer, tokenizer_max_length)
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
@@ -54,7 +58,38 @@ class CivicEvidenceDataSet(Dataset):
             DATA_PROCESSED_DIR, "civic_evidence_test_accepted_only.csv"
         )
         if check_file_exists(path_to_file):
-            return CivicEvidenceDataSet(path_to_file, tokenizer, tokenizer_max_length)
+            df = pd.read_csv(path_to_file)
+            return CivicEvidenceDataSet(df, tokenizer, tokenizer_max_length)
+        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
+
+    @staticmethod
+    def full_test_dataset_gpt4(tokenizer, tokenizer_max_length):
+        path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test_gpt4.csv")
+        if check_file_exists(path_to_file):
+            df = pd.read_csv(path_to_file)
+            return CivicEvidenceDataSet(df, tokenizer, tokenizer_max_length)
+        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
+
+    @staticmethod
+    def full_test_dataset_long_only(tokenizer, tokenizer_max_length, longer_than=512):
+        path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test.csv")
+        if check_file_exists(path_to_file):
+            df = pd.read_csv(path_to_file)
+            df["input"] = (
+                "Metadata:\n"
+                + df["prependString"]
+                + "\n"
+                + "Abstract:\n"
+                + df["sourceAbstract"]
+            )
+            df["input_len"] = df["input"].map(lambda x: len(tokenizer.encode(x)))
+            df = df.loc[df["input_len"] > longer_than].reset_index(drop=True)
+            return CivicEvidenceDataSet(
+                df,
+                tokenizer,
+                tokenizer_max_length,
+                return_ref_tokens_for_ig=True,
+            )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
@@ -63,12 +98,11 @@ class CivicEvidenceDataSet(Dataset):
 
     def __init__(
         self,
-        path_to_data,
+        df,
         tokenizer,
         tokenizer_max_length,
         return_ref_tokens_for_ig=False,
     ):
-        df = pd.read_csv(path_to_data)
         self.evidence_levels = df["evidenceLevel"]
         self.labels = df["evidenceLevel"].map(self._map_to_numerical)
         self.abstracts = df["sourceAbstract"]
