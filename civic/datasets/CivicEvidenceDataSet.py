@@ -38,7 +38,6 @@ class CivicEvidenceDataSet(Dataset):
                 df,
                 tokenizer,
                 tokenizer_max_length,
-                return_ref_tokens_for_ig=True,
             )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
@@ -67,7 +66,9 @@ class CivicEvidenceDataSet(Dataset):
         path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test_gpt4.csv")
         if check_file_exists(path_to_file):
             df = pd.read_csv(path_to_file)
-            return CivicEvidenceDataSet(df, tokenizer, tokenizer_max_length)
+            return CivicEvidenceDataSet(
+                df, tokenizer, tokenizer_max_length, return_ref_tokens_for_ig=True
+            )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
@@ -88,7 +89,6 @@ class CivicEvidenceDataSet(Dataset):
                 df,
                 tokenizer,
                 tokenizer_max_length,
-                return_ref_tokens_for_ig=True,
             )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
@@ -151,6 +151,7 @@ class CivicEvidenceDataSet(Dataset):
                 + [self.tokenizer.sep_token_id]
             )
             outputs["input_ref_ids"] = input_ref_ids
+            outputs["input_text"] = input_string
 
         return outputs
 

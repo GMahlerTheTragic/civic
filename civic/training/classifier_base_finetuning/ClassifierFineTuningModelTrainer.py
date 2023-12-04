@@ -46,7 +46,7 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
                         batch, self.model, self.optimizer, None
                     )
                     self.accelerator.print(
-                        f"\rProcessed {idx}/{len(self.train_data_loader)} batches",
+                        f"\rProcessed {idx + 1}/{len(self.train_data_loader)} batches",
                         end="",
                         flush=True,
                     )
@@ -67,7 +67,7 @@ class ClassifierFineTuningModelTrainer(ModelTrainer):
                             metrics_aggregator.accumulate(vm)
                         idx += 1
                         self.accelerator.print(
-                            f"\rProcessed {idx}/{len(self.validation_data_loader)} batches",
+                            f"\rProcessed {idx + 1}/{len(self.validation_data_loader)} batches",
                             end="",
                             flush=True,
                         )
