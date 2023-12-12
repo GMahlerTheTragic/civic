@@ -67,6 +67,8 @@ def main():
     model_trainer_factory = ModelTrainerFactory(accelerator)
     snapshot = args.resume if args.resume else None
     compute_weighted_loss = args.weighted
+    print(compute_weighted_loss)
+
     if args.instance == "Bert":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_bert_base_finetuning_model_trainer(
@@ -132,9 +134,9 @@ def main():
             look_for_args_file=False,
             args=[
                 "--output_dir",
-                "tmp1",
+                "tmp2",
                 "--warmup_steps",
-                "1500",
+                "500",
                 "--learning_rate",
                 "0.00003",
                 "--weight_decay",
@@ -142,7 +144,7 @@ def main():
                 "--adam_epsilon",
                 "1e-6",
                 "--max_steps",
-                "9000",
+                "3000",
                 "--logging_steps",
                 "100",
                 "--save_steps",
@@ -150,11 +152,11 @@ def main():
                 "--max_grad_norm",
                 "5.0",
                 "--per_device_train_batch_size",
-                "4",
+                "8",
                 "--per_device_eval_batch_size",
                 "8",  # 32GB gpu with fp32
                 "--gradient_accumulation_steps",
-                "8",
+                "16",
                 "--fp16",
             ],
         )

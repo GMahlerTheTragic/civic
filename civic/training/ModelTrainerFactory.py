@@ -332,13 +332,12 @@ class ModelTrainerFactory:
             tokenizer=tokenizer, mlm=True, mlm_probability=0.15
         )
         dataset = load_from_disk(
-            os.path.join(
-                HF_DATA_CACHE_DIR, "pubmed-central-cache/pmc/open_access_processed"
-            )
+            os.path.join(HF_DATA_CACHE_DIR, "pubmed-cache/pubmed_processed")
         )
         train_dataset = dataset["train"]
-        val_dataset = Dataset.from_dict(dataset["test"][:3000])
+        val_dataset = Dataset.from_dict(dataset["test"][45000:48000])
         trainer = Trainer(
+            tokenizer=tokenizer,
             model=model,
             args=training_args,
             data_collator=data_collator,

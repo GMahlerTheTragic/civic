@@ -1,3 +1,4 @@
+from torch import softmax
 from torch.utils.data import DataLoader
 
 import torch
@@ -93,10 +94,14 @@ class ClassifierModelEvaluator(ModelEvaluator):
                 {
                     "input_text": batch["input_text"],
                     "attribution_scores": self.integrated_gradient_wrapper.do_attribution(
-                        input_ids, ref_ids, attention_mask
+                        input_ids,
+                        ref_ids,
+                        attention_mask,
+                        target=torch.argmax(logits, dim=1).item(),
                     ).tolist(),
                     "actual_label": batch["label"].item(),
                     "predicted_label": torch.argmax(logits, dim=1).item(),
+                    "probabilities": softmax(logits, dim=1).item(),
                 }
             )
             print(
@@ -134,12 +139,13 @@ class ClassifierModelEvaluator(ModelEvaluator):
         print("\rEvaluating on long abstracts only...")
         metrics_test_long = self._evaluate(self.test_data_loader_long)
         print("\rEvaluating on explainability subset...")
-        metrics_test_gpt4 = self._evaluate_with_explainability(
-            self.test_data_loader_gpt4
-        )
+        print(metrics_test)
+        print(metrics_test_long)
+        metrics_test_gpt4 = self._evaluate(self.test_data_loader_gpt4)
         values = {
             "metrics_test": metrics_test,
             "metrics_test_long": metrics_test_long,
             "metrics_test_gpt4": metrics_test_gpt4,
         }
+
         return values

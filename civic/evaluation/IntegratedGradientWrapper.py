@@ -28,11 +28,11 @@ class IntegratedGradientWrapper:
         logits = self.model(input_ids, attention_mask=attention_mask).logits
         return logits
 
-    def do_attribution(self, input_ids, ref_ids, attention_mask):
+    def do_attribution(self, input_ids, ref_ids, attention_mask, target):
         attributions = self.lig.attribute(
             input_ids.long(),
             ref_ids.long(),
-            target=0,
+            target=target,
             additional_forward_args=(attention_mask,),
         )
         attributions = attributions.sum(dim=-1).squeeze(0)

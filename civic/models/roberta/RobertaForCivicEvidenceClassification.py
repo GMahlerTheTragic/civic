@@ -45,7 +45,7 @@ class RobertaForCivicEvidenceClassification:
 
     @staticmethod
     def from_long_biomed_roberta_pretrained(model_snapshot=None):
-        model_name = "tmp1/checkpoint-9000"
+        model_name = "tmp2/checkpoint-3000"
         tokenizer = RobertaTokenizerFast.from_pretrained("allenai/biomed_roberta_base")
         model = RobertaLongForSequenceClassification.from_pretrained(
             model_name if not model_snapshot else model_snapshot, num_labels=5

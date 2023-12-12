@@ -5,7 +5,7 @@ class ClassifierFineTuningBatchTrainingStep(BatchTrainingStep):
     def __init__(self, device, accelerator, criterion=None):
         self.device = device
         self.accelerator = accelerator
-        self.criterion = criterion.to(self.device)
+        self.criterion = criterion.to(self.device) if criterion else None
 
     def train_batch(self, batch, model, optimizer, lr_scheduler):
         batch_size = batch["input_ids"].size(0)

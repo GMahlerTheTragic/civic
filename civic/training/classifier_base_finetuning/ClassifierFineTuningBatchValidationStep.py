@@ -6,7 +6,7 @@ import torch
 class ClassifierFineTuningBatchValidationStep(BatchValidationStep):
     def __init__(self, device, criterion=None):
         self.device = device
-        self.criterion = criterion.to(self.device)
+        self.criterion = criterion.to(self.device) if criterion else None
 
     @staticmethod
     def _compute_true_positives(predicted_labels, labels, label: int):
