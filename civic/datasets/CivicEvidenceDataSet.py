@@ -64,7 +64,11 @@ class CivicEvidenceDataSet(Dataset):
                 + df["sourceAbstract"]
             )
             df["input_len"] = df["input"].map(lambda x: len(tokenizer.encode(x)))
-            df = df.loc[df["input_len"] > longer_than].reset_index(drop=True)
+            df = (
+                df.loc[df["input_len"] > longer_than]
+                .reset_index(drop=True)
+                .drop(columns=["input", "input_len"], axis=1)
+            )
             return CivicEvidenceDataSet(
                 df,
                 tokenizer,
@@ -83,8 +87,14 @@ class CivicEvidenceDataSet(Dataset):
         tokenizer_max_length,
         return_ref_tokens_for_ig=False,
     ):
-        self.evidence_levels = df["evidenceLevel"]
-        self.labels = df["evidenceLevel"].map(self._map_to_numerical)
+        self.evidence_levels = df["evidenceLevel"].astype(
+            pd.CategoricalDtype(["A", "B", "C", "D", "E"])
+        )
+        self.labels = (
+            df["evidenceLevel"]
+            .map(self._map_to_numerical)
+            .astype(pd.CategoricalDtype([0, 1, 2, 3, 4]))
+        )
         self.abstracts = df["sourceAbstract"]
         self.prepend_string = df["prependString"]
         self.tokenizer = tokenizer
@@ -125,11 +135,11 @@ class CivicEvidenceDataSet(Dataset):
         }
 
         if self.return_ref_tokens_for_ig:
-            input_ref_ids = torch.tensor(
-                [self.tokenizer.cls_token_id]
-                + [self.tokenizer.pad_token_id] * (self.tokenizer_max_length - 2)
-                + [self.tokenizer.sep_token_id]
+            input_ref_ids = torch.clone(outputs["input_ids"])
+            keep_values_mask = (input_ref_ids != self.tokenizer.cls_token_id) & (
+                input_ref_ids != self.tokenizer.sep_token_id
             )
+            input_ref_ids[keep_values_mask] = self.tokenizer.pad_token_id
             outputs["input_ref_ids"] = input_ref_ids
             outputs["input_text"] = input_string
 
@@ -154,4 +164,6 @@ class CivicEvidenceDataSet(Dataset):
     def inverse_class_prob_weights(self):
         probs = self.class_probabilities
         weights = 1 / probs
+        inf_mask = torch.isinf(weights)
+        weights = torch.where(inf_mask, torch.tensor(0.0), weights)
         return weights / weights.sum()
