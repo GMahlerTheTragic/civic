@@ -42,26 +42,6 @@ class CivicEvidenceDataSet(Dataset):
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
-    def accepted_only_train_dataset(tokenizer, tokenizer_max_length):
-        path_to_file = os.path.join(
-            DATA_PROCESSED_DIR, "civic_evidence_train_accepted_only.csv"
-        )
-        if check_file_exists(path_to_file):
-            df = pd.read_csv(path_to_file)
-            return CivicEvidenceDataSet(df, tokenizer, tokenizer_max_length)
-        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
-
-    @staticmethod
-    def accepted_only_test_dataset(tokenizer, tokenizer_max_length):
-        path_to_file = os.path.join(
-            DATA_PROCESSED_DIR, "civic_evidence_test_accepted_only.csv"
-        )
-        if check_file_exists(path_to_file):
-            df = pd.read_csv(path_to_file)
-            return CivicEvidenceDataSet(df, tokenizer, tokenizer_max_length)
-        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
-
-    @staticmethod
     def full_test_dataset_gpt4(tokenizer, tokenizer_max_length):
         path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test_gpt4.csv")
         if check_file_exists(path_to_file):
@@ -154,6 +134,16 @@ class CivicEvidenceDataSet(Dataset):
             outputs["input_text"] = input_string
 
         return outputs
+
+    def __eq__(self, other):
+        if self.__dict__.keys() != other.__dict__.keys():
+            return False
+        return all(
+            [
+                v1.equals(v2) if isinstance(v1, pd.Series) else v1 == v2
+                for v1, v2 in zip(self.__dict__.values(), other.__dict__.values())
+            ]
+        )
 
     @property
     def class_probabilities(self):
