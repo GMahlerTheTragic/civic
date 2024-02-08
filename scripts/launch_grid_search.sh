@@ -1,6 +1,5 @@
 # Define arrays of model architectures, learning rates, and batch sizes
 model_architectures=("Bert" "PubmedBert" "BiolinkBert" "Roberta" "BiomedRoberta" "BiomedRobertaLong")
-model_architectures=("Bert")
 learning_rates=("0.000001" "0.000005" "0.00001")
 batch_sizes=("8" "16")
 
