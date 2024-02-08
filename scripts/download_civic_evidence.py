@@ -110,5 +110,5 @@ if __name__ == "__main__":
         f"Retrieved {df.id.nunique()} unique evidence items. Database indicates {total_count_per_database}"
     )
     print("Saving as CSV file")
-    df.to_csv(os.path.join(DATA_DIR, "data/01_raw/civic_evidence.csv"))
+    df.to_csv(os.path.join(DATA_RAW_DIR, "civic_evidence.csv"))
     print("Success!")

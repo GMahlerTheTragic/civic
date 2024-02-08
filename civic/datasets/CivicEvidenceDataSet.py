@@ -96,6 +96,7 @@ class CivicEvidenceDataSet(Dataset):
             .astype(pd.CategoricalDtype([0, 1, 2, 3, 4]))
         )
         self.abstracts = df["sourceAbstract"]
+        self.evidence_item_id = df["id"]
         self.prepend_string = df["prependString"]
         self.tokenizer = tokenizer
         self.tokenizer_max_length = tokenizer_max_length
@@ -128,6 +129,7 @@ class CivicEvidenceDataSet(Dataset):
         attention_mask = encoding["attention_mask"]
 
         outputs = {
+            "evidence_item_id": self.evidence_item_id[idx],
             "input_ids": input_ids.squeeze(),
             "attention_mask": attention_mask.squeeze(),
             "label": torch.tensor(label),

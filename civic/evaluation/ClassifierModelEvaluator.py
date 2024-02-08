@@ -28,7 +28,7 @@ class ClassifierModelEvaluator(ModelEvaluator):
         self.macro_f1_score = MulticlassF1Score(num_classes=5, average="macro").to(
             self.device
         )
-        self.micro_f1_score = MulticlassF1Score(num_classes=5, average="micro").to(
+        self.micro_f1_score = MulticlassF1Score(num_classes=5, average="weighted").to(
             self.device
         )
         self.accuracy = Accuracy(task="multiclass", num_classes=5).to(self.device)
@@ -37,6 +37,7 @@ class ClassifierModelEvaluator(ModelEvaluator):
         self.model.eval()
 
     def _evaluate(self, dataloader: DataLoader):
+        evidence_item_ids = []
         predicted_labels = []
         actual_labels = []
         predicted_logits = []
@@ -48,12 +49,15 @@ class ClassifierModelEvaluator(ModelEvaluator):
             logits = outputs.logits
             predicted_logits.append(logits.detach())
             predicted_labels.append(torch.argmax(logits, dim=1))
+            evidence_item_ids.append(batch["evidence_item_id"])
             print(
                 f"\rProcessed {idx + 1}/{len(dataloader)} batches",
                 end="",
                 flush=True,
             )
         return {
+            "evidence-item-ids": torch.concat(evidence_item_ids).tolist(),
+            "predicted-labels": torch.concat(predicted_labels).tolist(),
             "f1-scores": self.f1_score(
                 torch.concat(predicted_labels, dim=0),
                 torch.concat(actual_labels, dim=0),
@@ -139,8 +143,7 @@ class ClassifierModelEvaluator(ModelEvaluator):
         print("\rEvaluating on long abstracts only...")
         metrics_test_long = self._evaluate(self.test_data_loader_long)
         print("\rEvaluating on explainability subset...")
-        print(metrics_test)
-        print(metrics_test_long)
+        print("micro-f1: {} \n".format(metrics_test["micro-f1-score"]))
         metrics_test_gpt4 = self._evaluate(self.test_data_loader_gpt4)
         values = {
             "metrics_test": metrics_test,

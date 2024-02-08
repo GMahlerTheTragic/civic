@@ -22,9 +22,7 @@ class ModelEvaluatorFactory:
         tokenizer, model, tokenizer_max_length, batch_size, integrated_gradient_wrapper
     ):
         test_dataloader = DataLoader(
-            CivicEvidenceDataSet.full_validation_dataset(
-                tokenizer, tokenizer_max_length
-            ),
+            CivicEvidenceDataSet.full_test_dataset(tokenizer, tokenizer_max_length),
             batch_size=batch_size,
             shuffle=False,
         )
