@@ -105,7 +105,7 @@ class ClassifierModelEvaluator(ModelEvaluator):
                     ).tolist(),
                     "actual_label": batch["label"].item(),
                     "predicted_label": torch.argmax(logits, dim=1).item(),
-                    "probabilities": softmax(logits, dim=1).item(),
+                    "probabilities": softmax(logits, dim=1).detach().tolist(),
                 }
             )
             print(
@@ -144,7 +144,9 @@ class ClassifierModelEvaluator(ModelEvaluator):
         metrics_test_long = self._evaluate(self.test_data_loader_long)
         print("\rEvaluating on explainability subset...")
         print("micro-f1: {} \n".format(metrics_test["micro-f1-score"]))
-        metrics_test_gpt4 = self._evaluate(self.test_data_loader_gpt4)
+        metrics_test_gpt4 = self._evaluate_with_explainability(
+            self.test_data_loader_gpt4
+        )
         values = {
             "metrics_test": metrics_test,
             "metrics_test_long": metrics_test_long,

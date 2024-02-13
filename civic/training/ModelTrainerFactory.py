@@ -53,15 +53,26 @@ class ModelTrainerFactory:
 
     @staticmethod
     def _get_dataloaders_for_civic_evidence_finetuning(
-        tokenizer, batch_size, tokenizer_max_length
+        tokenizer,
+        batch_size,
+        tokenizer_max_length,
+        use_prepend_string=False,
+        use_full_data_set=False,
     ):
-        train_dataset = CivicEvidenceDataSet.full_train_dataset(
-            tokenizer, tokenizer_max_length
-        )
-        test_dataset = CivicEvidenceDataSet.full_validation_dataset(
-            tokenizer, tokenizer_max_length
-        )
-
+        if use_full_data_set:
+            train_dataset = CivicEvidenceDataSet.full_train_dataset(
+                tokenizer, tokenizer_max_length, use_prepend_string=use_prepend_string
+            )
+            test_dataset = CivicEvidenceDataSet.full_validation_dataset(
+                tokenizer, tokenizer_max_length, use_prepend_string=use_prepend_string
+            )
+        else:
+            train_dataset = CivicEvidenceDataSet.train_dataset_unique_abstracts(
+                tokenizer, tokenizer_max_length, use_prepend_string=use_prepend_string
+            )
+            test_dataset = CivicEvidenceDataSet.validation_dataset_unique_abstracts(
+                tokenizer, tokenizer_max_length, use_prepend_string=use_prepend_string
+            )
         train_data_loader = DataLoader(
             train_dataset, batch_size=batch_size, shuffle=True
         )
@@ -121,6 +132,7 @@ class ModelTrainerFactory:
                 "effective_batch_size": batch_size
                 * gradient_accumulation_steps
                 * self.accelerator.num_processes,
+                "unique_abstracts": "True",
             },
         )
         optimizer = AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)

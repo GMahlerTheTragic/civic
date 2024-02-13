@@ -4,6 +4,8 @@ import numpy as np
 import torch
 
 from torch.utils.data import Dataset
+from transformers import BertTokenizer
+
 from civic.utils.filesystem_utils import check_file_exists
 from civic.config import DATA_PROCESSED_DIR
 
@@ -14,45 +16,152 @@ EVIDENCE_LEVEL_TO_NUMBER = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4}
 
 class CivicEvidenceDataSet(Dataset):
     @staticmethod
-    def full_train_dataset(tokenizer, tokenizer_max_length):
+    def full_train_dataset(tokenizer, tokenizer_max_length, use_prepend_string=False):
         path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_train.csv")
         if check_file_exists(path_to_file):
             df = pd.read_csv(path_to_file)
-            return CivicEvidenceDataSet(df, tokenizer, tokenizer_max_length)
+            return CivicEvidenceDataSet(
+                df, tokenizer, tokenizer_max_length, use_prepend_string
+            )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
-    def full_validation_dataset(tokenizer, tokenizer_max_length):
+    def train_dataset_unique_abstracts(
+        tokenizer, tokenizer_max_length, use_prepend_string=False
+    ):
+        path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_train_ua.csv")
+        if check_file_exists(path_to_file):
+            df = pd.read_csv(path_to_file)
+            return CivicEvidenceDataSet(
+                df, tokenizer, tokenizer_max_length, use_prepend_string
+            )
+        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
+
+    @staticmethod
+    def train_val_dataset_unique_abstracts(
+        tokenizer, tokenizer_max_length, use_prepend_string=False
+    ):
+        path_to_file_train = os.path.join(
+            DATA_PROCESSED_DIR, "civic_evidence_train_ua.csv"
+        )
+        path_to_file_val = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_val_ua.csv")
+        if check_file_exists(path_to_file_train) and check_file_exists(
+            path_to_file_val
+        ):
+            df_train = pd.read_csv(path_to_file_train)
+            df_val = pd.read_csv(path_to_file_val)
+            return CivicEvidenceDataSet(
+                pd.concat([df_train, df_val], axis=0).reset_index(),
+                tokenizer,
+                tokenizer_max_length,
+                use_prepend_string,
+            )
+        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
+
+    @staticmethod
+    def train_val_dataset(tokenizer, tokenizer_max_length, use_prepend_string=False):
+        path_to_file_train = os.path.join(
+            DATA_PROCESSED_DIR, "civic_evidence_train.csv"
+        )
+        path_to_file_val = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_val.csv")
+        if check_file_exists(path_to_file_train) and check_file_exists(
+            path_to_file_val
+        ):
+            df_train = pd.read_csv(path_to_file_train)
+            df_val = pd.read_csv(path_to_file_val)
+            return CivicEvidenceDataSet(
+                pd.concat([df_train, df_val], axis=0).reset_index(),
+                tokenizer,
+                tokenizer_max_length,
+                use_prepend_string,
+            )
+        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
+
+    @staticmethod
+    def full_validation_dataset(
+        tokenizer, tokenizer_max_length, use_prepend_string=False
+    ):
         path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_val.csv")
         if check_file_exists(path_to_file):
             df = pd.read_csv(path_to_file)
-            return CivicEvidenceDataSet(df, tokenizer, tokenizer_max_length)
+            return CivicEvidenceDataSet(
+                df, tokenizer, tokenizer_max_length, use_prepend_string
+            )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
-    def full_test_dataset(tokenizer, tokenizer_max_length):
+    def validation_dataset_unique_abstracts(
+        tokenizer, tokenizer_max_length, use_prepend_string=False
+    ):
+        path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_val_ua.csv")
+        if check_file_exists(path_to_file):
+            df = pd.read_csv(path_to_file)
+            return CivicEvidenceDataSet(
+                df, tokenizer, tokenizer_max_length, use_prepend_string
+            )
+        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
+
+    @staticmethod
+    def full_test_dataset(tokenizer, tokenizer_max_length, use_prepend_string=False):
         path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test.csv")
+        if check_file_exists(path_to_file):
+            df = pd.read_csv(path_to_file)
+            return CivicEvidenceDataSet(
+                df, tokenizer, tokenizer_max_length, use_prepend_string
+            )
+        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
+
+    @staticmethod
+    def test_dataset_unique_abstracts(
+        tokenizer, tokenizer_max_length, use_prepend_string=False
+    ):
+        path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test_ua.csv")
+        if check_file_exists(path_to_file):
+            df = pd.read_csv(path_to_file)
+            return CivicEvidenceDataSet(
+                df, tokenizer, tokenizer_max_length, use_prepend_string
+            )
+        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
+
+    @staticmethod
+    def test_dataset_gpt4_unique_abstracts(
+        tokenizer, tokenizer_max_length, use_prepend_string=False
+    ):
+        path_to_file = os.path.join(
+            DATA_PROCESSED_DIR, "civic_evidence_test_gpt4_ua.csv"
+        )
         if check_file_exists(path_to_file):
             df = pd.read_csv(path_to_file)
             return CivicEvidenceDataSet(
                 df,
                 tokenizer,
                 tokenizer_max_length,
+                use_prepend_string,
+                return_ref_tokens_for_ig=True,
             )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
-    def full_test_dataset_gpt4(tokenizer, tokenizer_max_length):
+    def full_test_dataset_gpt4(
+        tokenizer, tokenizer_max_length, use_prepend_string=False
+    ):
         path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test_gpt4.csv")
         if check_file_exists(path_to_file):
             df = pd.read_csv(path_to_file)
             return CivicEvidenceDataSet(
-                df, tokenizer, tokenizer_max_length, return_ref_tokens_for_ig=True
+                df,
+                tokenizer,
+                tokenizer_max_length,
+                use_prepend_string,
+                return_ref_tokens_for_ig=True,
             )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
     @staticmethod
-    def full_test_dataset_long_only(tokenizer, tokenizer_max_length, longer_than=512):
+    def full_test_dataset_long_only(
+        tokenizer, tokenizer_max_length, longer_than=512, use_prepend_string=False
+    ):
+        tokenizer_bert = BertTokenizer.from_pretrained("bert-base-uncased")
         path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test.csv")
         if check_file_exists(path_to_file):
             df = pd.read_csv(path_to_file)
@@ -63,7 +172,7 @@ class CivicEvidenceDataSet(Dataset):
                 + "Abstract:\n"
                 + df["sourceAbstract"]
             )
-            df["input_len"] = df["input"].map(lambda x: len(tokenizer.encode(x)))
+            df["input_len"] = df["input"].map(lambda x: len(tokenizer_bert.encode(x)))
             df = (
                 df.loc[df["input_len"] > longer_than]
                 .reset_index(drop=True)
@@ -73,6 +182,31 @@ class CivicEvidenceDataSet(Dataset):
                 df,
                 tokenizer,
                 tokenizer_max_length,
+                use_prepend_string,
+            )
+        raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
+
+    @staticmethod
+    def test_dataset_long_only_unique_abstracts(
+        tokenizer, tokenizer_max_length, longer_than=512, use_prepend_string=False
+    ):
+        tokenizer_bert = BertTokenizer.from_pretrained("bert-base-uncased")
+        path_to_file = os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test_ua.csv")
+        if check_file_exists(path_to_file):
+            df = pd.read_csv(path_to_file)
+            df["input_len"] = df["sourceAbstract"].map(
+                lambda x: len(tokenizer_bert.encode(x))
+            )
+            df = (
+                df.loc[df["input_len"] > longer_than]
+                .reset_index(drop=True)
+                .drop(columns=["input_len"], axis=1)
+            )
+            return CivicEvidenceDataSet(
+                df,
+                tokenizer,
+                tokenizer_max_length,
+                use_prepend_string,
             )
         raise FileNotFoundError(FILE_NOT_FOUND_ERROR_MESSAGE)
 
@@ -85,6 +219,7 @@ class CivicEvidenceDataSet(Dataset):
         df,
         tokenizer,
         tokenizer_max_length,
+        use_prepend_string=False,
         return_ref_tokens_for_ig=False,
     ):
         self.evidence_levels = df["evidenceLevel"].astype(
@@ -101,6 +236,7 @@ class CivicEvidenceDataSet(Dataset):
         self.tokenizer = tokenizer
         self.tokenizer_max_length = tokenizer_max_length
         self.return_ref_tokens_for_ig = return_ref_tokens_for_ig
+        self.use_prepend_string = use_prepend_string
 
     def __len__(self):
         return len(self.labels)
@@ -108,7 +244,12 @@ class CivicEvidenceDataSet(Dataset):
     def __getitem__(self, idx):
         abstract = str(self.abstracts[idx])
         prepend_string = str(self.prepend_string[idx])
-        input_string = "Metadata:\n" + prepend_string + "\n" + "Abstract:\n" + abstract
+        if self.use_prepend_string:
+            input_string = (
+                "Metadata:\n" + prepend_string + "\n" + "Abstract:\n" + abstract
+            )
+        else:
+            input_string = abstract
         label = self.labels[idx]
         evidence_level = self.evidence_levels[idx]
 

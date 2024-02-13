@@ -18,23 +18,25 @@ from civic.models.roberta.RobertaForCivicEvidenceClassification import (
 
 class ModelEvaluatorFactory:
     @staticmethod
-    def _get_trainer_from_model(
+    def _get_evaluator_from_model(
         tokenizer, model, tokenizer_max_length, batch_size, integrated_gradient_wrapper
     ):
         test_dataloader = DataLoader(
-            CivicEvidenceDataSet.full_test_dataset(tokenizer, tokenizer_max_length),
+            CivicEvidenceDataSet.test_dataset_unique_abstracts(
+                tokenizer, tokenizer_max_length
+            ),
             batch_size=batch_size,
             shuffle=False,
         )
         test_dataloader_long = DataLoader(
-            CivicEvidenceDataSet.full_test_dataset_long_only(
+            CivicEvidenceDataSet.test_dataset_long_only_unique_abstracts(
                 tokenizer, tokenizer_max_length
             ),
             batch_size=batch_size,
             shuffle=False,
         )
         test_dataloader_gpt4 = DataLoader(
-            CivicEvidenceDataSet.full_test_dataset_gpt4(
+            CivicEvidenceDataSet.test_dataset_gpt4_unique_abstracts(
                 tokenizer, tokenizer_max_length
             ),
             batch_size=batch_size,
@@ -60,7 +62,7 @@ class ModelEvaluatorFactory:
         integrated_gradient_wrapper = IntegratedGradientWrapper(
             model, IntegratedGradientsModelType.Roberta
         )
-        return self._get_trainer_from_model(
+        return self._get_evaluator_from_model(
             tokenizer, model, 512, batch_size, integrated_gradient_wrapper
         )
 
@@ -72,7 +74,7 @@ class ModelEvaluatorFactory:
         integrated_gradient_wrapper = IntegratedGradientWrapper(
             model, IntegratedGradientsModelType.Roberta
         )
-        return self._get_trainer_from_model(
+        return self._get_evaluator_from_model(
             tokenizer, model, 512, batch_size, integrated_gradient_wrapper
         )
 
@@ -88,7 +90,7 @@ class ModelEvaluatorFactory:
         integrated_gradient_wrapper = IntegratedGradientWrapper(
             model, IntegratedGradientsModelType.Roberta
         )
-        return self._get_trainer_from_model(
+        return self._get_evaluator_from_model(
             tokenizer, model, 1024, batch_size, integrated_gradient_wrapper
         )
 
@@ -100,7 +102,7 @@ class ModelEvaluatorFactory:
         integrated_gradient_wrapper = IntegratedGradientWrapper(
             model, IntegratedGradientsModelType.Bert
         )
-        return self._get_trainer_from_model(
+        return self._get_evaluator_from_model(
             tokenizer, model, 512, batch_size, integrated_gradient_wrapper
         )
 
@@ -114,7 +116,7 @@ class ModelEvaluatorFactory:
         integrated_gradient_wrapper = IntegratedGradientWrapper(
             model, IntegratedGradientsModelType.Bert
         )
-        return self._get_trainer_from_model(
+        return self._get_evaluator_from_model(
             tokenizer, model, 512, batch_size, integrated_gradient_wrapper
         )
 
@@ -128,6 +130,6 @@ class ModelEvaluatorFactory:
         integrated_gradient_wrapper = IntegratedGradientWrapper(
             model, IntegratedGradientsModelType.Bert
         )
-        return self._get_trainer_from_model(
+        return self._get_evaluator_from_model(
             tokenizer, model, 512, batch_size, integrated_gradient_wrapper
         )
