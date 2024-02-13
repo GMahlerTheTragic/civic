@@ -89,6 +89,7 @@ def main():
         print("Please provide a valid instance name.")
         sys.exit(-1)
     metrics = model_evaluator.do_evaluation()
+    metrics["instance"] = args.instance
     print(f"\rWriting metrics to {file_path}")
     with open(file_path, "w") as json_file:
         json.dump(metrics, json_file)

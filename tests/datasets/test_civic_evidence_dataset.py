@@ -14,6 +14,7 @@ class TestCivicEvidenceDataset:
     def mock_ce_df(self):
         return DataFrame(
             {
+                "id": [1, 2, 3],
                 "evidenceLevel": [
                     "A",
                     "B",
@@ -28,12 +29,13 @@ class TestCivicEvidenceDataset:
     def mock_ce_df_long(self):
         return DataFrame(
             {
+                "id": [1, 2, 3],
                 "evidenceLevel": [
                     "A",
                     "B",
                     "C",
                 ],
-                "sourceAbstract": ["source " * 100, "source2 " * 500, "source3 " * 500],
+                "sourceAbstract": ["source " * 50, "source2 " * 500, "source3 " * 500],
                 "prependString": ["pp1", "pp2", "pp3"],
             }
         )
@@ -42,6 +44,7 @@ class TestCivicEvidenceDataset:
     def mock_ce_df_long_filtered(self):
         return DataFrame(
             {
+                "id": [2, 3],
                 "evidenceLevel": [
                     "B",
                     "C",
@@ -86,6 +89,7 @@ class TestCivicEvidenceDataset:
             (
                 DataFrame(
                     {
+                        "id": [],
                         "evidenceLevel": [],
                         "sourceAbstract": [],
                         "prependString": [],
@@ -96,6 +100,7 @@ class TestCivicEvidenceDataset:
             (
                 DataFrame(
                     {
+                        "id": [1, 2, 3],
                         "evidenceLevel": [
                             "A",
                             "B",
@@ -114,6 +119,7 @@ class TestCivicEvidenceDataset:
             (
                 DataFrame(
                     {
+                        "id": [1, 2],
                         "evidenceLevel": [
                             "B",
                             "C",
@@ -219,7 +225,13 @@ class TestCivicEvidenceDataset:
         mock_tokenizer,
     ):
         ced = CivicEvidenceDataSet.full_test_dataset_gpt4(mock_tokenizer, 512)
-        expected = CivicEvidenceDataSet(mock_ce_df, mock_tokenizer, 512, True)
+        expected = CivicEvidenceDataSet(
+            mock_ce_df,
+            mock_tokenizer,
+            512,
+            use_prepend_string=False,
+            return_ref_tokens_for_ig=True,
+        )
         assert ced == expected
         check_file_exists_mock_true.assert_called_once_with(
             os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test_gpt4.csv")
@@ -265,23 +277,24 @@ class TestCivicEvidenceDataset:
         )
         sample = ced.__getitem__(0)
         expected_output = {
-            "input_ids": torch.tensor(
-                [101, 27425, 1024, 4903, 2487, 10061, 1024, 3120, 2487, 102, 0, 0]
-            ),
-            "attention_mask": torch.tensor([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]),
+            "evidence_item_id": 1,
+            "input_ids": torch.tensor([101, 3120, 2487, 102, 0, 0, 0, 0, 0, 0, 0, 0]),
+            "attention_mask": torch.tensor([1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]),
             "label": torch.tensor(0),
             "evidence_level": "A",
-            "input_ref_ids": torch.tensor([101, 0, 0, 0, 0, 0, 0, 0, 0, 102, 0, 0]),
-            "input_text": "Metadata:\npp1\nAbstract:\nsource1",
+            "input_ref_ids": torch.tensor([101, 0, 0, 102, 0, 0, 0, 0, 0, 0, 0, 0]),
+            "input_text": "source1",
         }
         print(expected_output)
         print(sample)
 
         assert all(
             [
-                torch.equal(v, sample[k])
-                if isinstance(v, torch.Tensor)
-                else v == sample[k]
+                (
+                    torch.equal(v, sample[k])
+                    if isinstance(v, torch.Tensor)
+                    else v == sample[k]
+                )
                 for k, v in expected_output.items()
             ]
         )
