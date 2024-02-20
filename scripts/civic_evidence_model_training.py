@@ -9,7 +9,10 @@ from transformers import (
 )
 
 from civic.training import ModelTrainer
-from civic.training.ModelTrainerFactory import ModelTrainerFactory
+from civic.training.ModelTrainerFactory import (
+    ModelTrainerFactory,
+    CivicModelTrainingMode,
+)
 from civic.utils.AcceleratorSingleton import AcceleratorSingleton
 
 
@@ -37,7 +40,6 @@ parser.add_argument(
         "BiolinkBert",
         "Roberta",
         "BiomedRoberta",
-        "Longformer",
         "BioMedLMFineTuning",
         "BiomedRobertaLongPreTraining",
         "BiomedRobertaLong",
@@ -59,7 +61,27 @@ parser.add_argument(
 )
 parser.add_argument("--weighted", type=bool)
 parser.add_argument("--resume")
+parser.add_argument(
+    "--mode",
+    choices=[
+        "ABSTRACTS_ONLY_MULTILABEL",
+        "ABSTRACTS_ONLY_UNIQUE_ONLY",
+        "ABSTRACTS_PLUS_PREPEND_METADATA",
+    ],
+    default="ABSTRACTS_ONLY_UNIQUE_ONLY",
+)
 args = parser.parse_args()
+
+
+def _get_mode_from_mode_option(mode_option):
+    if mode_option == "ABSTRACTS_ONLY_MULTILABEL":
+        return CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL
+    elif mode_option == "ABSTRACTS_ONLY_UNIQUE_ONLY":
+        return CivicModelTrainingMode.ABSTRACTS_ONLY_UNIQUE_ONLY
+    elif mode_option == "ABSTRACTS_PLUS_PREPEND_METADATA":
+        return CivicModelTrainingMode.ABSTRACTS_PLUS_PREPEND_METADATA
+    else:
+        raise RuntimeError("Enum option not covered!")
 
 
 def main():
@@ -67,18 +89,26 @@ def main():
     model_trainer_factory = ModelTrainerFactory(accelerator)
     snapshot = args.resume if args.resume else None
     compute_weighted_loss = args.weighted
-    print(compute_weighted_loss)
+    mode = _get_mode_from_mode_option(args.mode)
 
     if args.instance == "Bert":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_bert_base_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
+                args.learningrate,
+                args.batchsize,
+                snapshot,
+                compute_weighted_loss,
+                mode=mode,
             )
         )
     elif args.instance == "PubmedBert":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_pubmed_bert_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
+                args.learningrate,
+                args.batchsize,
+                snapshot,
+                compute_weighted_loss,
+                mode=mode,
             )
         )
     elif args.instance == "BiolinkBert":
@@ -90,37 +120,49 @@ def main():
     elif args.instance == "BiolinkBertLarge":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_bio_link_bert_large_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
+                args.learningrate,
+                args.batchsize,
+                snapshot,
+                compute_weighted_loss,
+                mode=mode,
             )
         )
     elif args.instance == "Roberta":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_roberta_base_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
+                args.learningrate,
+                args.batchsize,
+                snapshot,
+                compute_weighted_loss,
+                mode=mode,
             )
         )
     elif args.instance == "BiomedRoberta":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_biomed_roberta_base_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
+                args.learningrate,
+                args.batchsize,
+                snapshot,
+                compute_weighted_loss,
+                mode=mode,
             )
         )
     elif args.instance == "BiomedRobertaLong":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_biomed_roberta_long_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
-            )
-        )
-    elif args.instance == "Longformer":
-        model_trainer: ModelTrainer = (
-            model_trainer_factory.create_longformer_base_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot, compute_weighted_loss
+                args.learningrate,
+                args.batchsize,
+                snapshot,
+                compute_weighted_loss,
+                mode=mode,
             )
         )
     elif args.instance == "BioMedLMFineTuning":
         model_trainer: ModelTrainer = (
             model_trainer_factory.create_biomed_lm_finetuning_model_trainer(
-                args.learningrate, args.batchsize, snapshot
+                args.learningrate,
+                args.batchsize,
+                snapshot,
             )
         )
     elif args.instance == "BiomedRobertaLongPreTraining":

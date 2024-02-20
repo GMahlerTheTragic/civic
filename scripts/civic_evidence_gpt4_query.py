@@ -1,5 +1,6 @@
 import json
 from time import sleep
+import ast
 
 import torch
 from openai import OpenAI
@@ -7,8 +8,7 @@ import pandas as pd
 
 import os
 
-from torchmetrics.classification import MulticlassF1Score
-from torchmetrics.classification import Accuracy
+from sklearn.metrics import f1_score
 
 from civic.config import DATA_PROCESSED_DIR
 
@@ -24,23 +24,20 @@ def get_gpt_4_example(prepend_string, abstract):
 def get_random_few_shot_examples(n_samples_per_evidence_level, is_test=False):
     if is_test:
         sampled_df = pd.read_csv(
-            os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test_gpt4.csv")
+            os.path.join(DATA_PROCESSED_DIR, "civic_evidence_test_gpt4_mc.csv")
         )
     else:
-        df = pd.read_csv(os.path.join(DATA_PROCESSED_DIR, "civic_evidence_train.csv"))
+        df = pd.read_csv(
+            os.path.join(DATA_PROCESSED_DIR, "civic_evidence_train_mc.csv")
+        )
         sampled_df = pd.DataFrame()
-        for value in df["evidenceLevel"].unique():
-            sampled_rows = df[df["evidenceLevel"] == value].sample(
-                n_samples_per_evidence_level
-            )
+        for value in ["A", "B", "C", "D", "E"]:
+            sampled_rows = df.loc[df[value] == 1].sample(n_samples_per_evidence_level)
             sampled_df = pd.concat([sampled_df, sampled_rows], axis=0)
     out = [
         {
-            "example": get_gpt_4_example(
-                sampled_df.iloc[i]["prependString"],
-                sampled_df.iloc[i]["sourceAbstract"],
-            ),
-            "label": sampled_df.iloc[i]["evidenceLevel"],
+            "example": sampled_df.iloc[i]["sourceAbstract"],
+            "labels": sampled_df.iloc[i][["A", "B", "C", "D", "E"]].to_list(),
         }
         for i in range(sampled_df.shape[0])
     ]
@@ -51,11 +48,11 @@ def _get_prompt_from_sample(sample):
     return [
         {
             "role": "user",
-            "content": f"Extract the level of clinical significance from this combination of metadata and abstract:\n{sample['example']}",
+            "content": f"Extract the levels of clinical evidence from this abstract: {sample['example']}",
         },
         {
             "role": "assistant",
-            "content": f"""{sample['label']}""",
+            "content": f"""{sample['labels']}""",
         },
     ]
 
@@ -67,30 +64,34 @@ def gpt4_query(examples, prompt):
                 "role": "system",
                 "content": "You are an expert on rare tumor treatments. In the following you will be presented with "
                 + "abstracts from medical research papers. These abstracts deal with treatment approaches for rare "
-                + "cancers as characterized by their specific genomic variants. Your job is to infer the level of "
-                + "clinical significance of the investigations described in the abstract from the abstract and relevant"
-                + 'metadata. The labels should range from "A" (indicating the strongest clinical significance) to '
-                + '"E" (indicating the weakest clinical significance). You will answer machine-like with exactly one '
-                + "character (the level of clinical significance you think is appropriate). You will be presented with "
-                "examples.",
+                + "cancers as characterized by their specific genomic variants. Your job is to infer matching levels of "
+                + "clinical evidence of the investigations described in the abstract."
+                + ' Labels range from "A" (indicating the strongest clinical evidence) to '
+                + '"E" (indicating the weakest clinical evidence). A single abstract can be associated with multiple'
+                + " evidence levels. The definitions of the evidence levels are as follows: "
+                + " A: Proven/consensus association in human medicine."
+                + " B: Clinical trial or other primary patient data supports association."
+                + " C: Individual case reports from clinical journals."
+                + " D: In vivo or in vitro models support association."
+                + " E: Indirect evidence."
+                + " You will answer machine-like with a list of 0 vs. 1 flags for every of the five"
+                + " evidence levels indicating if the abstract matches an evidence level or not. In the following"
+                + " you will be presented with examples. Note the first entry of the result list should correspond to evidence level "
+                + '"A" and the last entry of the result list should correspond to evidence level "E".',
             },
             *examples,
             prompt,
         ],
     )
     completion = client.chat.completions.create(
-        model="gpt-4-1106-preview", messages=messages[0]
+        model="gpt-4-0125-preview", messages=messages[0]
     )
     print(completion)
-    projected_label = completion.choices[0].message.content
-    return projected_label
+    projected_labels = ast.literal_eval(completion.choices[0].message.content)
+    return projected_labels
 
 
 def do_gpt4_evaluation(n_shots):
-    f1_score = MulticlassF1Score(num_classes=5, average=None)
-    macro_f1_score = MulticlassF1Score(num_classes=5, average="macro")
-    micro_f1_score = MulticlassF1Score(num_classes=5, average="micro")
-    accuracy = Accuracy(task="multiclass", num_classes=5)
     train_examples = [
         _get_prompt_from_sample(sample)
         for sample in get_random_few_shot_examples(n_shots)
@@ -105,9 +106,8 @@ def do_gpt4_evaluation(n_shots):
     for i in range(len(test_examples)):
         if (i + 1) % 4 == 0:
             sleep(10)
-        val = gpt4_query(examples, test_examples[i][0])
-        projected_label = label_to_num.get(val)
-        actual_label = label_to_num.get(test_examples[i][1]["content"])
+        projected_label = gpt4_query(examples, test_examples[i][0])
+        actual_label = ast.literal_eval(test_examples[i][1]["content"])
 
         predicted_labels.append(projected_label)
         actual_labels.append(actual_label)
@@ -115,28 +115,26 @@ def do_gpt4_evaluation(n_shots):
         print(f"Actual label : {actual_label}")
     return {
         "f1-scores": f1_score(
-            torch.tensor(predicted_labels), torch.tensor(actual_labels)
+            torch.tensor(actual_labels),
+            torch.tensor(predicted_labels),
+            average=None,
         ).tolist(),
-        "micro-f1-score": micro_f1_score(
-            torch.tensor(predicted_labels), torch.tensor(actual_labels)
-        ).item(),
-        "macro-f1-score": macro_f1_score(
-            torch.tensor(predicted_labels), torch.tensor(actual_labels)
-        ).item(),
-        "accuracy": accuracy(
-            torch.tensor(predicted_labels), torch.tensor(actual_labels)
-        ).item(),
+        "f1-score": f1_score(
+            torch.tensor(actual_labels),
+            torch.tensor(predicted_labels),
+            average="weighted",
+        ),
     }
 
 
 def main():
     metrics_dict = {}
-    n_shots = 10
+    n_shots = 4
     print(f"using approx {n_shots * 700 * 5 * 25} tokens")
     metrics = do_gpt4_evaluation(n_shots)
     print(metrics)
     metrics_dict[str(n_shots)] = metrics
-    with open(f"gpt4_results__nshots{n_shots}.json", "w") as json_file:
+    with open(f"gpt4_results__nshots{n_shots}_2.json", "w") as json_file:
         json.dump(metrics_dict, json_file)
 
 
