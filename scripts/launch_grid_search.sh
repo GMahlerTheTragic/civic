@@ -13,15 +13,15 @@ for model_instance in "${model_architectures[@]}"; do
             random_port=$(shuf -i 1024-49151 -n 1)
             sleep 120
             export CUDA_VISIBLE_DEVICES=0,1
-            nohup accelerate launch --main_process_port $random_port civic_evidence_model_training.py --instance $model_instance --epochs 10 --learningrate $lr --batchsize $batch_size --accumulation 1 &
+            nohup accelerate launch --main_process_port $random_port civic_evidence_model_training.py --instance $model_instance --epochs 10 --learningrate $lr --batchsize $batch_size --accumulation 1 --mode ABSTRACTS_ONLY_MULTILABEL &
             sleep 120
             random_port=$(shuf -i 1024-49151 -n 1)
             export CUDA_VISIBLE_DEVICES=0,2
-            nohup accelerate launch --main_process_port $random_port civic_evidence_model_training.py --instance $model_instance --epochs 10 --learningrate $lr --batchsize $batch_size --accumulation 1 &
+            nohup accelerate launch --main_process_port $random_port civic_evidence_model_training.py --instance $model_instance --epochs 10 --learningrate $lr --batchsize $batch_size --accumulation 1 --mode ABSTRACTS_ONLY_MULTILABEL &
             sleep 120
             random_port=$(shuf -i 1024-49151 -n 1)
             export CUDA_VISIBLE_DEVICES=1,2
-            nohup accelerate launch --main_process_port $random_port civic_evidence_model_training.py --instance $model_instance --epochs 10 --learningrate $lr --batchsize $batch_size --accumulation 1 &
+            nohup accelerate launch --main_process_port $random_port civic_evidence_model_training.py --instance $model_instance --epochs 10 --learningrate $lr --batchsize $batch_size --accumulation 1 --mode ABSTRACTS_ONLY_MULTILABEL &
             wait
         done
     done
