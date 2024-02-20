@@ -1,38 +1,37 @@
 #!/bin/bash
 
-python3 civic_evidence_model_evaluation.py --instance Bert --snapshot results_top_ua/effortless-smoke-941 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance Bert --snapshot results_top_ua/vivid-capybara-940 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance Bert --snapshot results_top_ua/hopeful-dew-939 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance Bert --snapshot results_top_ua/cheerful-wish-1064 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance Bert --snapshot results_top_ua/vibrant-chrysanthemum-1063 --batchsize 1
+python3 civic_evidence_model_evaluation.py --instance Bert --snapshot results_top_mc/ablaze-heart-1203 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance Bert --snapshot results_top_mc/angelic-chocolate-1204 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance Bert --snapshot results_top_mc/entrancing-heartthrob-1109 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance Bert --snapshot results_top_mc/candlelit-heartthrob-1108 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance Bert --snapshot results_top_mc/expressive-cupid-1107 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
 
-python3 civic_evidence_model_evaluation.py --instance PubmedBert --snapshot results_top_ua/whole-breeze-974 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance PubmedBert --snapshot results_top_ua/fragrant-salad-973 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance PubmedBert --snapshot results_top_ua/twilight-shape-972 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance PubmedBert --snapshot results_top_ua/red-lantern-1065 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance PubmedBert --snapshot results_top_ua/festive-cake-1066 --batchsize 1
+python3 civic_evidence_model_evaluation.py --instance PubmedBert --snapshot results_top_mc/euphoric-flower-1206 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance PubmedBert --snapshot results_top_mc/delirious-date-1205 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance PubmedBert --snapshot results_top_mc/beguiling-caress-1121 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance PubmedBert --snapshot results_top_mc/spellbinding-hug-1120 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance PubmedBert --snapshot results_top_mc/honest-etchings-1119 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
 
-python3 civic_evidence_model_evaluation.py --instance BiolinkBert --snapshot results_top_ua/twilight-lion-977 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiolinkBert --snapshot results_top_ua/lively-frost-976 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiolinkBert --snapshot results_top_ua/happy-oath-975 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiolinkBert --snapshot results_top_ua/floating-horse-1067 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiolinkBert --snapshot results_top_ua/enchanting-kumquat-1068 --batchsize 1
+python3 civic_evidence_model_evaluation.py --instance BiolinkBert --snapshot results_top_mc/warm-balloon-1208 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiolinkBert --snapshot results_top_mc/dreamy-dove-1207 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiolinkBert --snapshot results_top_mc/hunky-heart-1145 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiolinkBert --snapshot results_top_mc/ecstatic-crush-1144 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiolinkBert --snapshot results_top_mc/starry-eyed-candles-1143 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
 
-python3 civic_evidence_model_evaluation.py --instance Roberta --snapshot results_top_ua/likely-terrain-1007 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance Roberta --snapshot results_top_ua/distinctive-monkey-1006 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance Roberta --snapshot results_top_ua/sleek-music-1005 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance Roberta --snapshot results_top_ua/glistening-chrysanthemum-1069 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance Roberta --snapshot results_top_ua/festive-fuse-1070 --batchsize 1
+python3 civic_evidence_model_evaluation.py --instance Roberta --snapshot results_top_mc/doting-violet-1210 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance Roberta --snapshot results_top_mc/enchanting-chocolate-1209 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance Roberta --snapshot results_top_mc/sweet-tulip-1202 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance Roberta --snapshot results_top_mc/daring-tulip-1201 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance Roberta --snapshot results_top_mc/gentle-hug-1200 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
 
-python3 civic_evidence_model_evaluation.py --instance BiomedRoberta --snapshot results_top_ua/worthy-flower-1013 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiomedRoberta --snapshot results_top_ua/silvery-serenity-1012 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiomedRoberta --snapshot results_top_ua/copper-planet-1011 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiomedRoberta --snapshot results_top_ua/sparkling-envelope-1076 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiomedRoberta --snapshot results_top_ua/abundant-envelope-1077 --batchsize 1
+python3 civic_evidence_model_evaluation.py --instance BiomedRoberta --snapshot results_top_mc/kind-sweetheart-1212 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiomedRoberta --snapshot results_top_mc/blazing-candles-1211 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiomedRoberta --snapshot results_top_mc/ablaze-chocolate-1163 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiomedRoberta --snapshot results_top_mc/sparkling-dove-1162 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiomedRoberta --snapshot results_top_mc/constant-candy-heart-1161 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
 
-python3 civic_evidence_model_evaluation.py --instance BiomedRobertaLong --snapshot results_top_ua/legendary-rabbit-1060 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiomedRobertaLong --snapshot results_top_ua/festive-noodles-1045 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiomedRobertaLong --snapshot results_top_ua/brilliant-monkey-1044 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiomedRobertaLong --snapshot results_top_ua/beaming-ox-1073 --batchsize 1
-python3 civic_evidence_model_evaluation.py --instance BiomedRobertaLong --snapshot results_top_ua/beaming-festival-1074 --batchsize 1
-
+python3 civic_evidence_model_evaluation.py --instance BiomedRobertaLong --snapshot results_top_mc/daring-caress-1215 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiomedRobertaLong --snapshot results_top_mc/appealing-infatuation-1213 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiomedRobertaLong --snapshot results_top_mc/forthright-smooch-1181 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiomedRobertaLong --snapshot results_top_mc/radiant-lovebird-1180 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL
+python3 civic_evidence_model_evaluation.py --instance BiomedRobertaLong --snapshot results_top_mc/expressive-date-1179 --batchsize 1 --mode ABSTRACTS_ONLY_MULTILABEL

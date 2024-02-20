@@ -1,4 +1,5 @@
 import os.path
+from enum import Enum, auto
 
 from datasets import load_from_disk, Dataset
 from torch.nn import CrossEntropyLoss
@@ -7,13 +8,13 @@ from transformers import (
     GPT2ForSequenceClassification,
     BertForSequenceClassification,
     RobertaForSequenceClassification,
-    LongformerForSequenceClassification,
     DataCollatorForLanguageModeling,
     Trainer,
 )
 
 from civic.config import HF_DATA_CACHE_DIR
 from civic.datasets.CivicEvidenceDataSet import CivicEvidenceDataSet
+from civic.datasets.CivicEvidenceMultiClassDataSet import CivicEvidenceMultiClassDataSet
 from civic.models.bert.BertForCivicEvidenceClassification import (
     BertForCivicEvidenceClassification,
 )
@@ -42,9 +43,24 @@ from torch.optim import AdamW
 from civic.training.classifier_base_finetuning.ClassifierFineTuningBatchTrainingStep import (
     ClassifierFineTuningBatchTrainingStep,
 )
+from civic.training.classifier_multi_label_finetuning.MultiLabelClassifierFineTuningBatchTrainingStep import (
+    MultiLabelClassifierFineTuningBatchTrainingStep,
+)
+from civic.training.classifier_multi_label_finetuning.MultiLabelClassifierFineTuningBatchValidationStep import (
+    MultiLabelClassifierFineTuningBatchValidationStep,
+)
+from civic.training.classifier_multi_label_finetuning.MultiLabelClassifierFineTuningModelTrainer import (
+    MultiLabelClassifierFineTuningModelTrainer,
+)
 from civic.training.mlm_bert_long_pretraining.MlmBertLongPreTrainingModelTrainer import (
     MlmRobertaLongPreTrainingModelTrainer,
 )
+
+
+class CivicModelTrainingMode(Enum):
+    ABSTRACTS_ONLY_MULTILABEL = auto()
+    ABSTRACTS_ONLY_UNIQUE_ONLY = auto()
+    ABSTRACTS_PLUS_PREPEND_METADATA = auto()
 
 
 class ModelTrainerFactory:
@@ -56,42 +72,75 @@ class ModelTrainerFactory:
         tokenizer,
         batch_size,
         tokenizer_max_length,
-        use_prepend_string=False,
-        use_full_data_set=False,
+        mode=CivicModelTrainingMode.ABSTRACTS_ONLY_UNIQUE_ONLY,
     ):
-        if use_full_data_set:
+
+        if mode == CivicModelTrainingMode.ABSTRACTS_PLUS_PREPEND_METADATA:
             train_dataset = CivicEvidenceDataSet.full_train_dataset(
-                tokenizer, tokenizer_max_length, use_prepend_string=use_prepend_string
+                tokenizer, tokenizer_max_length, use_prepend_string=True
             )
             test_dataset = CivicEvidenceDataSet.full_validation_dataset(
-                tokenizer, tokenizer_max_length, use_prepend_string=use_prepend_string
+                tokenizer, tokenizer_max_length, use_prepend_string=True
             )
-        else:
+        elif mode == CivicModelTrainingMode.ABSTRACTS_ONLY_UNIQUE_ONLY:
             train_dataset = CivicEvidenceDataSet.train_dataset_unique_abstracts(
-                tokenizer, tokenizer_max_length, use_prepend_string=use_prepend_string
+                tokenizer, tokenizer_max_length, use_prepend_string=False
             )
             test_dataset = CivicEvidenceDataSet.validation_dataset_unique_abstracts(
-                tokenizer, tokenizer_max_length, use_prepend_string=use_prepend_string
+                tokenizer, tokenizer_max_length, use_prepend_string=False
             )
+        elif mode == CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL:
+            train_dataset = CivicEvidenceMultiClassDataSet.full_train_dataset(
+                tokenizer, tokenizer_max_length, use_prepend_string=False
+            )
+            test_dataset = CivicEvidenceMultiClassDataSet.full_val_dataset(
+                tokenizer, tokenizer_max_length, use_prepend_string=False
+            )
+        else:
+            raise RuntimeError("Enum option is not covered")
+
         train_data_loader = DataLoader(
             train_dataset, batch_size=batch_size, shuffle=True
         )
         validation_data_loader = DataLoader(test_dataset, batch_size=batch_size)
         return train_data_loader, validation_data_loader
 
-    def _get_classification_steps(self, weights=None):
+    def _get_classification_steps(
+        self, weights=None, mode=CivicModelTrainingMode.ABSTRACTS_ONLY_UNIQUE_ONLY
+    ):
         criterion = (
             CrossEntropyLoss(reduction="sum", weight=weights.float())
             if weights is not None
             else None
         )
-        batch_training_step: BatchTrainingStep = ClassifierFineTuningBatchTrainingStep(
-            self.accelerator.device, self.accelerator, criterion
+        batch_training_step: BatchTrainingStep = (
+            MultiLabelClassifierFineTuningBatchTrainingStep(
+                self.accelerator.device, self.accelerator, criterion
+            )
+            if mode == CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL
+            else ClassifierFineTuningBatchTrainingStep(
+                self.accelerator.device, self.accelerator, criterion
+            )
         )
         batch_validation_step: BatchValidationStep = (
-            ClassifierFineTuningBatchValidationStep(self.accelerator.device, criterion)
+            MultiLabelClassifierFineTuningBatchValidationStep(
+                self.accelerator.device, criterion
+            )
+            if mode == CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL
+            else ClassifierFineTuningBatchValidationStep(
+                self.accelerator.device, criterion
+            )
         )
         return batch_training_step, batch_validation_step
+
+    @staticmethod
+    def _get_problem_type_from_mode(mode: CivicModelTrainingMode):
+        problem_type = (
+            "multi_label_classification"
+            if mode == CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL
+            else "single_label_classification"
+        )
+        return problem_type
 
     def _get_trainer_from_model(
         self,
@@ -104,19 +153,21 @@ class ModelTrainerFactory:
         tokenizer_max_length,
         gradient_accumulation_steps=1,
         weighted=False,
+        mode=CivicModelTrainingMode.ABSTRACTS_ONLY_UNIQUE_ONLY,
     ):
+
         model.to(self.accelerator.device)
         (
             train_data_loader,
             validation_data_loader,
         ) = ModelTrainerFactory._get_dataloaders_for_civic_evidence_finetuning(
-            tokenizer, batch_size, tokenizer_max_length
+            tokenizer, batch_size, tokenizer_max_length, mode=mode
         )
         weights = (
             train_data_loader.dataset.inverse_class_prob_weights if weighted else None
         )
         batch_training_step, batch_validation_step = self._get_classification_steps(
-            weights=weights
+            weights=weights, mode=mode
         )
         training_monitor: TrainingMonitor = WandbTrainingMonitor(
             accelerator=self.accelerator,
@@ -132,7 +183,7 @@ class ModelTrainerFactory:
                 "effective_batch_size": batch_size
                 * gradient_accumulation_steps
                 * self.accelerator.num_processes,
-                "unique_abstracts": "True",
+                "mode": mode,
             },
         )
         optimizer = AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
@@ -143,46 +194,50 @@ class ModelTrainerFactory:
         train_data_loader = self.accelerator.prepare(train_data_loader)
         validation_data_loader = self.accelerator.prepare(validation_data_loader)
 
-        return ClassifierFineTuningModelTrainer(
-            training_monitor,
-            batch_training_step,
-            batch_validation_step,
-            train_data_loader,
-            validation_data_loader,
-            model,
-            optimizer,
-            self.accelerator,
+        trainer = (
+            MultiLabelClassifierFineTuningModelTrainer(
+                training_monitor,
+                batch_training_step,
+                batch_validation_step,
+                train_data_loader,
+                validation_data_loader,
+                model,
+                optimizer,
+                self.accelerator,
+            )
+            if mode == CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL
+            else ClassifierFineTuningModelTrainer(
+                training_monitor,
+                batch_training_step,
+                batch_validation_step,
+                train_data_loader,
+                validation_data_loader,
+                model,
+                optimizer,
+                self.accelerator,
+            )
         )
-
-    def create_longformer_base_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot, weighted=False
-    ) -> ModelTrainer:
-        (
-            tokenizer,
-            model,
-        ) = RobertaForCivicEvidenceClassification.from_longformer_base()
-        if snapshot:
-            model = LongformerForSequenceClassification.from_pretrained(snapshot)
-        return self._get_trainer_from_model(
-            model,
-            tokenizer,
-            batch_size,
-            learning_rate,
-            architecture="longformer",
-            snapshot_name="allenai-longformer-base",
-            tokenizer_max_length=4096,
-            weighted=weighted,
-        )
+        return trainer
 
     def create_roberta_base_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot, weighted=False
+        self,
+        learning_rate,
+        batch_size,
+        snapshot,
+        weighted=False,
+        mode=CivicModelTrainingMode.ABSTRACTS_ONLY_UNIQUE_ONLY,
     ) -> ModelTrainer:
+        problem_type = self._get_problem_type_from_mode(mode)
         (
             tokenizer,
             model,
-        ) = RobertaForCivicEvidenceClassification.from_roberta_base()
+        ) = RobertaForCivicEvidenceClassification.from_roberta_base(
+            problem_type=problem_type
+        )
         if snapshot:
-            model = RobertaForSequenceClassification.from_pretrained(snapshot)
+            model = RobertaForSequenceClassification.from_pretrained(
+                snapshot, problem_type=problem_type
+            )
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -192,17 +247,28 @@ class ModelTrainerFactory:
             snapshot_name="roberta-base",
             tokenizer_max_length=512,
             weighted=weighted,
+            mode=mode,
         )
 
     def create_biomed_roberta_base_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot, weighted=False
+        self,
+        learning_rate,
+        batch_size,
+        snapshot,
+        weighted=False,
+        mode=CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL,
     ) -> ModelTrainer:
+        problem_type = self._get_problem_type_from_mode(mode)
         (
             tokenizer,
             model,
-        ) = RobertaForCivicEvidenceClassification.from_biomed_roberta_base()
+        ) = RobertaForCivicEvidenceClassification.from_biomed_roberta_base(
+            problem_type=problem_type
+        )
         if snapshot:
-            model = RobertaForSequenceClassification.from_pretrained(snapshot)
+            model = RobertaForSequenceClassification.from_pretrained(
+                snapshot, problem_type=problem_type
+            )
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -212,17 +278,28 @@ class ModelTrainerFactory:
             snapshot_name="biomed_roberta_base",
             tokenizer_max_length=512,
             weighted=weighted,
+            mode=mode,
         )
 
     def create_biomed_roberta_long_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot, weighted=False
+        self,
+        learning_rate,
+        batch_size,
+        snapshot,
+        weighted=False,
+        mode=CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL,
     ) -> ModelTrainer:
+        problem_type = self._get_problem_type_from_mode(mode)
         (
             tokenizer,
             model,
-        ) = RobertaForCivicEvidenceClassification.from_long_biomed_roberta_pretrained()
+        ) = RobertaForCivicEvidenceClassification.from_long_biomed_roberta_pretrained(
+            problem_type=problem_type
+        )
         if snapshot:
-            model = RobertaLongForSequenceClassification.from_pretrained(snapshot)
+            model = RobertaLongForSequenceClassification.from_pretrained(
+                snapshot, problem_type=problem_type
+            )
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -232,17 +309,28 @@ class ModelTrainerFactory:
             snapshot_name="biomed_roberta_long",
             tokenizer_max_length=1024,
             weighted=weighted,
+            mode=mode,
         )
 
     def create_bert_base_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot, weighted=False
+        self,
+        learning_rate,
+        batch_size,
+        snapshot,
+        weighted=False,
+        mode=CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL,
     ) -> ModelTrainer:
+        problem_type = self._get_problem_type_from_mode(mode)
         (
             tokenizer,
             model,
-        ) = BertForCivicEvidenceClassification.from_bert_base_uncased()
+        ) = BertForCivicEvidenceClassification.from_bert_base_uncased(
+            problem_type=problem_type
+        )
         if snapshot:
-            model = BertForSequenceClassification.from_pretrained(snapshot)
+            model = BertForSequenceClassification.from_pretrained(
+                snapshot, problem_type=problem_type
+            )
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -252,17 +340,28 @@ class ModelTrainerFactory:
             snapshot_name="bert-base-uncased",
             tokenizer_max_length=512,
             weighted=weighted,
+            mode=mode,
         )
 
     def create_pubmed_bert_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot, weighted=False
+        self,
+        learning_rate,
+        batch_size,
+        snapshot,
+        weighted=False,
+        mode=CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL,
     ) -> ModelTrainer:
+        problem_type = self._get_problem_type_from_mode(mode)
         (
             tokenizer,
             model,
-        ) = BertForCivicEvidenceClassification.from_pubmed_bert()
+        ) = BertForCivicEvidenceClassification.from_pubmed_bert(
+            problem_type=problem_type
+        )
         if snapshot:
-            model = BertForSequenceClassification.from_pretrained(snapshot)
+            model = BertForSequenceClassification.from_pretrained(
+                snapshot, problem_type=problem_type
+            )
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -272,17 +371,28 @@ class ModelTrainerFactory:
             snapshot_name="pubmed_bert",
             tokenizer_max_length=512,
             weighted=weighted,
+            mode=mode,
         )
 
     def create_bio_link_bert_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot, weighted=False
+        self,
+        learning_rate,
+        batch_size,
+        snapshot,
+        weighted=False,
+        mode=CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL,
     ) -> ModelTrainer:
+        problem_type = self._get_problem_type_from_mode(mode)
         (
             tokenizer,
             model,
-        ) = BertForCivicEvidenceClassification.from_bio_link_bert()
+        ) = BertForCivicEvidenceClassification.from_bio_link_bert(
+            problem_type=problem_type
+        )
         if snapshot:
-            model = BertForSequenceClassification.from_pretrained(snapshot)
+            model = BertForSequenceClassification.from_pretrained(
+                snapshot, problem_type=problem_type
+            )
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -292,17 +402,28 @@ class ModelTrainerFactory:
             snapshot_name="bio_link_bert",
             tokenizer_max_length=512,
             weighted=weighted,
+            mode=mode,
         )
 
     def create_bio_link_bert_large_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot, weighted=False
+        self,
+        learning_rate,
+        batch_size,
+        snapshot,
+        weighted=False,
+        mode=CivicModelTrainingMode.ABSTRACTS_ONLY_MULTILABEL,
     ) -> ModelTrainer:
+        problem_type = self._get_problem_type_from_mode(mode)
         (
             tokenizer,
             model,
-        ) = BertForCivicEvidenceClassification.from_bio_link_bert_large()
+        ) = BertForCivicEvidenceClassification.from_bio_link_bert_large(
+            problem_type=problem_type
+        )
         if snapshot:
-            model = BertForSequenceClassification.from_pretrained(snapshot)
+            model = BertForSequenceClassification.from_pretrained(
+                snapshot, problem_type=problem_type
+            )
         return self._get_trainer_from_model(
             model,
             tokenizer,
@@ -312,10 +433,15 @@ class ModelTrainerFactory:
             snapshot_name="bio_link_bert_long",
             tokenizer_max_length=512,
             weighted=weighted,
+            mode=mode,
         )
 
     def create_biomed_lm_finetuning_model_trainer(
-        self, learning_rate, batch_size, snapshot, weighted=False
+        self,
+        learning_rate,
+        batch_size,
+        snapshot,
+        weighted=False,
     ) -> ModelTrainer:
         (
             tokenizer,

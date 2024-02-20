@@ -35,6 +35,8 @@ class IntegratedGradientWrapper:
             target=target,
             additional_forward_args=(attention_mask,),
         )
+        print(attributions)
+        print(attributions.size())
         attributions = attributions.sum(dim=-1).squeeze(0)
         attributions = attributions / torch.norm(attributions)
         return attributions
