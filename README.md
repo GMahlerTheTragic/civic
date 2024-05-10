@@ -28,11 +28,10 @@ Here is a brief overview of the project structure:
 
 To set up this project, follow these steps:
 
-## Clone the repository and install dependencies
+## Install dependencies
 
 ```bash
-git clone https://github.com/yourusername/yourproject.git
-cd yourproject
+cd civic
 pip install -r requirements.txt
 ```
 
@@ -58,10 +57,6 @@ Contributions are welcome! If you'd like to contribute to this project, please f
 2. Create a new branch for your changes.
 3. Commit your changes and push to your branch.
 4. Open a Pull Request and describe the changes you've made.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE). See the LICENSE file for more information.
 
 ## Contact
 
