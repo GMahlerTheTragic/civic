@@ -3,7 +3,10 @@
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=GMahlerTheTragic_civic&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=GMahlerTheTragic_civic)
 # civic
 
-This repository serves as a foundational template for a machine learning project in Python. The project is designed to handle data loading, processing, model training, evaluation, and visualization using PyTorch and Jupyter Notebooks.
+This repository contains PyTorch code to fine-tune and pretrain various language models (BERT- & RoBERTa-based) for a classification task from the medical domain.
+Civic Evidence is the task of labeling medical paper abstracts from PubMed with up to 5 levels of clinical evidence.
+The Civic evidence model is explained here: https://civic.readthedocs.io/en/latest/curating/evidence.html
+
 
 ## Table of Contents
 - [Project Structure](#project-structure)
